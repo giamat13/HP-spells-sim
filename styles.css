@@ -330,6 +330,22 @@ body.casting #controls .icon-btn:not(#capture-btn):not(#mute-btn) { opacity: 0; 
   font-style: italic;
 }
 
+/* ---------- Movement hint ---------- */
+
+#move-hint {
+  position: fixed; left: 50%; top: 1.2rem; z-index: 15;
+  transform: translateX(-50%);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  background: var(--parchment);
+  border: 1px solid var(--parchment-edge);
+  padding: 0.4rem 0.9rem;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+#move-hint.hide { opacity: 0; }
+
 /* ---------- Flash for screenshot ---------- */
 #flash {
   position: fixed; inset: 0; z-index: 90;

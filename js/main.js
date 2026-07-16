@@ -99,6 +99,82 @@
     pointer.y = (ev.clientY / window.innerHeight) * 2 - 1;
   });
 
+  /* ---------- walking: WASD + Space, mouse-look via pointer lock ---------- */
+
+  var EYE_H = 1.75, MOVE_SPEED = 5.2, JUMP_V = 6.5, GRAVITY = 17, WALK_RADIUS = 88;
+  var walk = {
+    active: false, locked: false, grounded: true,
+    pos: new THREE.Vector3(0, EYE_H, 11), vel: 0, yaw: 0, pitch: 0
+  };
+  var keys = Object.create(null);
+  var moveHint = document.getElementById('move-hint');
+  if (isMobile && moveHint) moveHint.classList.add('hide'); // no keyboard on touch devices
+
+  function isTypingTarget(el) {
+    return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+  }
+  function beginWalking() {
+    if (walk.active) return;
+    walk.active = true;
+    if (moveHint) moveHint.classList.add('hide');
+  }
+
+  window.addEventListener('keydown', function (ev) {
+    if (isTypingTarget(document.activeElement)) return;
+    keys[ev.code] = true;
+    if (ev.code === 'Space') {
+      ev.preventDefault();
+      beginWalking();
+      if (walk.grounded) { walk.vel = JUMP_V; walk.grounded = false; }
+    } else if (ev.code === 'KeyW' || ev.code === 'KeyA' || ev.code === 'KeyS' || ev.code === 'KeyD') {
+      beginWalking();
+    }
+  });
+  window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
+
+  canvas.addEventListener('click', function () {
+    if (patronus.active) return;
+    canvas.requestPointerLock();
+  });
+  document.addEventListener('pointerlockchange', function () {
+    walk.locked = document.pointerLockElement === canvas;
+  });
+  document.addEventListener('mousemove', function (ev) {
+    if (!walk.locked) return;
+    beginWalking();
+    walk.yaw -= ev.movementX * 0.0022;
+    walk.pitch -= ev.movementY * 0.0022;
+    var lim = Math.PI / 2 - 0.05;
+    walk.pitch = Math.max(-lim, Math.min(lim, walk.pitch));
+  });
+
+  var walkFwd = new THREE.Vector3(), walkRight = new THREE.Vector3(), walkMove = new THREE.Vector3();
+  function updateWalker(dt) {
+    camera.rotation.order = 'YXZ';
+    camera.rotation.set(walk.pitch, walk.yaw, 0);
+    camera.getWorldDirection(walkFwd);
+    walkFwd.y = 0; walkFwd.normalize();
+    walkRight.set(-walkFwd.z, 0, walkFwd.x);
+
+    walkMove.set(0, 0, 0);
+    if (keys.KeyW) walkMove.add(walkFwd);
+    if (keys.KeyS) walkMove.sub(walkFwd);
+    if (keys.KeyD) walkMove.add(walkRight);
+    if (keys.KeyA) walkMove.sub(walkRight);
+    if (walkMove.lengthSq() > 0) walkMove.normalize().multiplyScalar(MOVE_SPEED * dt);
+    walk.pos.x += walkMove.x;
+    walk.pos.z += walkMove.z;
+
+    walk.vel -= GRAVITY * dt;
+    walk.pos.y += walk.vel * dt;
+    if (walk.pos.y <= EYE_H) { walk.pos.y = EYE_H; walk.vel = 0; walk.grounded = true; }
+
+    var r = Math.hypot(walk.pos.x, walk.pos.z);
+    if (r > WALK_RADIUS) { var k = WALK_RADIUS / r; walk.pos.x *= k; walk.pos.z *= k; }
+
+    camera.position.copy(walk.pos);
+  }
+
   function updateCamera(t, dt) {
     var ph = patronus.phase;
     if (ph === 'run' || ph === 'fade') {
@@ -120,6 +196,10 @@
       desiredLook.set(1.6, 2.2, 1.5);
       camPos.lerp(desiredPos, 1 - Math.exp(-dt * 0.9));
       camLook.lerp(desiredLook, 1 - Math.exp(-dt * 1.4));
+    } else if (walk.active) {
+      updateWalker(dt);
+      prevPatronusPos.copy(patronus.pos);
+      return;
     } else {
       // idle: slow breathing drift + gentle pointer parallax
       desiredPos.set(
