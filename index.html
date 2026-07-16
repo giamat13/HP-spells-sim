@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Harry Potter — Spellbook</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>✨</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 3D scene -->
+  <canvas id="scene"></canvas>
+  <!-- pointer sparkle overlay -->
+  <canvas id="sparkles"></canvas>
+
+  <!-- Landing / book cover -->
+  <div id="landing">
+    <div class="cover">
+      <div class="cover-rule"></div>
+      <h1 class="cover-title">Harry Potter</h1>
+      <h2 class="cover-sub">The Spellbook</h2>
+      <p class="cover-note">A grimoire of light against the dark</p>
+      <button id="open-book" class="gold-btn">Open the Spellbook</button>
+      <p class="cover-hint">Headphones recommended</p>
+      <div class="cover-rule"></div>
+    </div>
+  </div>
+
+  <!-- Left spell menu -->
+  <aside id="spell-menu" class="ui-panel">
+    <h3 class="panel-title">Spellbook</h3>
+    <ul id="spell-list">
+      <li class="spell active" data-spell="patronus">
+        <span class="spell-name">Expecto Patronum</span>
+        <span class="spell-kind">The Patronus Charm</span>
+      </li>
+      <li class="spell locked"><span class="spell-name">Lumos</span><span class="spell-kind">Coming soon 🔒</span></li>
+      <li class="spell locked"><span class="spell-name">Expelliarmus</span><span class="spell-kind">Coming soon 🔒</span></li>
+      <li class="spell locked"><span class="spell-name">Wingardium Leviosa</span><span class="spell-kind">Coming soon 🔒</span></li>
+      <li class="spell locked"><span class="spell-name">Riddikulus</span><span class="spell-kind">Coming soon 🔒</span></li>
+    </ul>
+    <button id="journal-btn" class="quiet-btn">📖 Spell Journal</button>
+  </aside>
+
+  <!-- Top-right controls -->
+  <div id="controls">
+    <button id="capture-btn" class="icon-btn" title="Capture this moment">📷</button>
+    <button id="weather-btn" class="icon-btn" title="Dementor weather">☁</button>
+    <button id="mute-btn" class="icon-btn" title="Mute">♪</button>
+    <button id="menu-toggle" class="icon-btn" title="Menu">☰</button>
+  </div>
+
+  <!-- Bottom: patronus picker + cast bar -->
+  <div id="cast-ui">
+    <p id="hint">Choose your Patronus, then speak the words.</p>
+    <div id="animal-cards"></div>
+    <div id="cast-bar">
+      <input id="incantation" type="text" autocomplete="off" spellcheck="false"
+             placeholder='Type “Expecto Patronum”…'>
+      <button id="mic-btn" class="icon-btn" title="Speak the incantation" hidden>🎙</button>
+      <button id="cast-btn" class="gold-btn">⚡ Cast</button>
+    </div>
+  </div>
+
+  <!-- Journal modal -->
+  <div id="journal" class="modal" hidden>
+    <div class="modal-card">
+      <h3 class="panel-title">Spell Journal</h3>
+      <div id="journal-stats"></div>
+      <h4 class="journal-sub">Pages yet unwritten</h4>
+      <ul class="journal-locked">
+        <li>Lumos: a light in the palm of your hand 🔒</li>
+        <li>Expelliarmus: the disarming charm 🔒</li>
+        <li>Wingardium Leviosa: the levitation charm 🔒</li>
+        <li>Riddikulus: laughter against fear 🔒</li>
+      </ul>
+      <button id="journal-close" class="gold-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Casting caption -->
+  <div id="caption" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/animals.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/forest.js"></script>
+  <script src="js/patronus.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
