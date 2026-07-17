@@ -90,7 +90,13 @@
     if (hooks.onCast) hooks.onCast('lumos', { on: 'toggle' });
   }
 
+  // 5% of the time, "It's LeviOsa, not LevioSAH" plays alongside the real
+  // cast (never instead of it) — a little surprise layered on top, not a
+  // fizzle.
+  var LEVIOSA_MEME_CHANCE = 0.05;
+
   function castLeviosa() {
+    if (Math.random() < LEVIOSA_MEME_CHANCE) AudioSys.playLeviosaMeme();
     if (hooks.onCast) hooks.onCast('leviosa', null);
   }
 
@@ -109,13 +115,6 @@
     if (hooks.onCast) hooks.onCast('bombarda', { maxima: true });
   }
 
-  // "It's LeviOsa, not LevioSAH" — say it wrong (the meme mispronunciation,
-  // drawn out with extra trailing A's) and the charm fizzles: only the clip
-  // plays, nothing actually levitates.
-  function castLeviosaMeme() {
-    AudioSys.playLeviosaMeme();
-  }
-
   // "Expecto Patronum" is long and Latin, so both ASR and unsure speakers
   // mangle the first word constantly (aspecto, aspeto, ekspecto...); accept
   // any of those plus a bare "patro-" fragment for the second word.
@@ -130,15 +129,18 @@
   var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
   var LUMOS_MAXIMA_RE = /^\s*lumos\s*maxima\b/i;
   var LUMOS_RE = /^\s*lumos\b/i;
-  var LEVIOSA_MEME_RE = /levios+a{3,}/i;
 
   // "Wingardium Leviosa" is long and invented, so ASR mangles it constantly.
   // "Leviosa" alone is distinctive enough to accept on its own (with common
   // misspellings/mishears); "Wingardium"-ish + any "levi" fragment also counts.
   var LEVIOSA_WORD_RE = /\b(leviosa|leviosah|leviosaa|leviosar|libiosa)\b/i;
   var WINGARDIUM_RE = /\b([wv]ingardium|[wv]ingardian|[wv]ing\s*guardian|when\s*guardian|[wv]ing\s*gardenia)\b/i;
+  // Drawn-out "leviosaaaa" (extra trailing a's) doesn't satisfy the word
+  // boundary above, but it's still a cast of the spell — just said funny.
+  var LEVIOSA_DRAWN_OUT_RE = /levios+a{3,}/i;
   function isLeviosaPhrase(text) {
-    return LEVIOSA_WORD_RE.test(text) || (WINGARDIUM_RE.test(text) && /levi/i.test(text));
+    return LEVIOSA_WORD_RE.test(text) || LEVIOSA_DRAWN_OUT_RE.test(text) ||
+      (WINGARDIUM_RE.test(text) && /levi/i.test(text));
   }
 
   // "Incendio" is short and phonetic, but ASR (and non-native pronunciation)
@@ -213,7 +215,6 @@
 
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
-    if (LEVIOSA_MEME_RE.test(text)) { castLeviosaMeme(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
     if (NOX_RE.test(text)) { castLumosOff(); return true; }
     if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
@@ -229,72 +230,6 @@
 
   var mic = { supported: false, active: false, wantOn: false };
 
-  /* Detecting the drawn-out meme pronunciation from speech.
-     The transcript can't tell us: recognition normalizes whatever you say
-     into a dictionary word, so "leviosaaaa" always comes back as "leviosa".
-     Recognition event timing can't tell us either: the final result only
-     arrives after Chrome decides you stopped talking, so any duration
-     measured from it is inflated by that end-of-speech wait (this is why
-     earlier attempts fired on every utterance).
-     So we listen to the mic ourselves in parallel and measure how long the
-     voice actually sustains — real elongation shows up as a long voiced run.
-     Calibrate with UI.voiceTuning: set .debug = true to log measured values,
-     then adjust .msPerWord (elongation threshold) or .rms (mic sensitivity). */
-  var voice = {
-    debug: false,
-    rms: 0.012,          // loudness above which we count audio as speech
-    msPerWord: 850,      // ms per spoken word above which it reads as drawn out
-    silenceMs: 220,      // quiet gap that ends an utterance
-    lastMs: 0,
-    _ctx: null, _analyser: null, _buf: null,
-    _voiced: false, _startT: 0, _quietT: 0, _timer: null
-  };
-
-  function voiceMeterPoll() {
-    voice._analyser.getFloatTimeDomainData(voice._buf);
-    var sum = 0;
-    for (var i = 0; i < voice._buf.length; i++) sum += voice._buf[i] * voice._buf[i];
-    var rms = Math.sqrt(sum / voice._buf.length);
-    var t = performance.now();
-    if (rms > voice.rms) {
-      if (!voice._voiced) { voice._voiced = true; voice._startT = t; }
-      voice._quietT = 0;
-    } else if (voice._voiced) {
-      if (!voice._quietT) voice._quietT = t;
-      else if (t - voice._quietT > voice.silenceMs) {
-        voice.lastMs = voice._quietT - voice._startT;
-        voice._voiced = false;
-        voice._quietT = 0;
-        if (voice.debug) console.log('[voice] utterance', Math.round(voice.lastMs) + 'ms');
-      }
-    }
-  }
-
-  function startVoiceMeter() {
-    if (voice._ctx || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      voice._ctx = new AC();
-      var src = voice._ctx.createMediaStreamSource(stream);
-      var an = voice._ctx.createAnalyser();
-      an.fftSize = 1024;
-      src.connect(an);                       // analyser only, never to destination
-      voice._analyser = an;
-      voice._buf = new Float32Array(an.fftSize);
-      voice._timer = setInterval(voiceMeterPoll, 50);
-    }).catch(function () {});                // no mic permission: meme stays typed-only
-  }
-
-  // How drawn-out the last utterance was, per word — long "leviosaaaa" reads
-  // high, a brisk "wingardium leviosa" reads low.
-  function spokenMsPerWord(heard) {
-    var words = heard.trim().split(/\s+/).length || 1;
-    var perWord = voice.lastMs / words;
-    if (voice.debug) console.log('[voice] "' + heard + '"', Math.round(perWord) + 'ms/word');
-    return perWord;
-  }
-
   function micStartRecognition() {
     if (!mic.supported || mic.active) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -307,12 +242,7 @@
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
         if (isPatronusPhrase(heard)) { castPatronus(); continue; }
-        if (LEVIOSA_MEME_RE.test(heard)) { castLeviosaMeme(); continue; }
-        if (isLeviosaPhrase(heard)) {
-          if (spokenMsPerWord(heard) > voice.msPerWord) castLeviosaMeme();
-          else castLeviosa();
-          continue;
-        }
+        if (isLeviosaPhrase(heard)) { castLeviosa(); continue; }
         if (NOX_RE.test(heard)) { castLumosOff(); continue; }
         if (LUMOS_MAXIMA_RE.test(heard)) { castLumosMaxima(); continue; }
         if (LUMOS_RE.test(heard)) { castLumosOn(); continue; }
@@ -350,7 +280,6 @@
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
-      startVoiceMeter();
     });
   }
 
@@ -358,7 +287,6 @@
     if (!mic.supported) return;
     mic.wantOn = true;
     micStartRecognition();
-    startVoiceMeter();
   }
 
   /* ---------- pointer sparkles ---------- */
@@ -611,7 +539,6 @@
     },
 
     update: updateSparkles,
-    startVoice: startVoice,
-    voiceTuning: voice          // console-tunable: .debug, .msPerWord, .rms
+    startVoice: startVoice
   };
 })();
