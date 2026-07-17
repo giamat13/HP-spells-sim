@@ -78,43 +78,34 @@
   }
 
   function castLumosOn() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('lumos', { on: true, maxima: false });
   }
   function castLumosMaxima() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('lumos', { on: true, maxima: true });
   }
   function castLumosOff() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('lumos', { on: false });
   }
   function toggleLumos() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('lumos', { on: 'toggle' });
   }
 
   function castLeviosa() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('leviosa', null);
   }
 
   function castIncendio() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('incendio', null);
   }
 
   function castAccio() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('accio', null);
   }
 
   function castBombarda() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('bombarda', { maxima: false });
   }
   function castBombardaMaxima() {
-    if (casting) return;
     if (hooks.onCast) hooks.onCast('bombarda', { maxima: true });
   }
 
@@ -122,7 +113,6 @@
   // drawn out with extra trailing A's) and the charm fizzles: only the clip
   // plays, nothing actually levitates.
   function castLeviosaMeme() {
-    if (casting) return;
     AudioSys.playLeviosaMeme();
   }
 

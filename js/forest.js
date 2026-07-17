@@ -103,6 +103,42 @@
     return g;
   }
 
+  // A radially-subdivided ground disc — concentric rings of vertices from
+  // the center out to `radius` — instead of a flat single-ring fan. Built
+  // directly flat in the XZ plane (y = height, up) so no extra rotation is
+  // needed, and dense enough that Bombarda can dig a real bowl-shaped pit
+  // into it later instead of just painting a scorch decal on top.
+  function buildGroundGeometry(radius, rings, segs) {
+    var geo = new THREE.BufferGeometry();
+    var positions = [0, 0, 0];              // center vertex
+    var ringStart = [1];
+    for (var r = 1; r <= rings; r++) {
+      ringStart[r] = positions.length / 3;
+      var rad = radius * (r / rings);
+      for (var s = 0; s <= segs; s++) {
+        var a = (s / segs) * Math.PI * 2;
+        positions.push(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+      }
+    }
+    var indices = [];
+    for (var s = 0; s < segs; s++) {
+      indices.push(0, ringStart[1] + s, ringStart[1] + s + 1);
+    }
+    for (r = 1; r < rings; r++) {
+      var inner = ringStart[r], outer = ringStart[r + 1];
+      for (s = 0; s < segs; s++) {
+        var i0 = inner + s, i1 = inner + s + 1, o0 = outer + s, o1 = outer + s + 1;
+        indices.push(i0, o0, o1);
+        indices.push(i0, o1, i1);
+      }
+    }
+    geo.setIndex(indices);
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+    return geo;
+  }
+
   function build(scene, Q) {
     var F = { trees: [], bats: [], updaters: [] };
 
@@ -113,15 +149,16 @@
       bark:  new THREE.MeshLambertMaterial({ color: 0x1b1512 }),
       bark2: new THREE.MeshLambertMaterial({ color: 0x241c15 }),
       pine:  new THREE.MeshLambertMaterial({ color: 0x0d1a16 }),
-      ground: new THREE.MeshLambertMaterial({ color: 0x0d1310 }),
+      ground: new THREE.MeshLambertMaterial({ color: 0x0d1310, side: THREE.DoubleSide }),
       rock:  new THREE.MeshLambertMaterial({ color: 0x1c2026 }),
       leaf:  new THREE.MeshLambertMaterial({ color: 0x241a10, side: THREE.DoubleSide }),
       bush:  new THREE.MeshLambertMaterial({ color: 0x101a13 })
     };
 
-    // Ground
-    var ground = new THREE.Mesh(new THREE.CircleGeometry(95, 40), mats.ground);
-    ground.rotation.x = -Math.PI / 2;
+    // Ground — dense enough to actually deform into craters (see F.digCrater
+    // below). Built flat in the XZ plane already, so no rotation needed.
+    var groundGeo = buildGroundGeometry(95, 46, 64);
+    var ground = new THREE.Mesh(groundGeo, mats.ground);
     ground.receiveShadow = true;
     scene.add(ground);
 
@@ -359,6 +396,66 @@
         felled.push(tr);
       }
       return felled;
+    };
+
+    // Bombarda craters: real dug-out pits in the ground mesh, not just a
+    // decal painted on top. Each cast pushes the affected vertices down into
+    // a bowl with a raised lip of thrown-up earth around the rim.
+    var groundPos = groundGeo.attributes.position;
+    var groundVertCount = groundPos.count;
+    var groundVX = new Float32Array(groundVertCount), groundVZ = new Float32Array(groundVertCount);
+    for (i = 0; i < groundVertCount; i++) {
+      groundVX[i] = groundPos.getX(i);
+      groundVZ[i] = groundPos.getZ(i);
+    }
+    F.craters = [];
+
+    // Height contribution of a single crater at distance `dist` from its
+    // center: a smooth bowl (deepest at the middle) out to 0.72x its radius,
+    // a raised rim between 0.72x and 1.15x, and untouched ground beyond that.
+    function craterProfile(dist, radius, depth, rim) {
+      var u = dist / radius;
+      if (u <= 0.72) {
+        var t = u / 0.72;
+        return -depth * (1 - t * t);
+      } else if (u <= 1.15) {
+        var t2 = (u - 0.72) / (1.15 - 0.72);
+        return rim * Math.sin(Math.PI * t2);
+      }
+      return 0;
+    }
+
+    // Ground height (world y) at an arbitrary (x, z), from every crater dug
+    // so far. Used both to reshape the mesh and to keep the player's and
+    // objects' footing consistent with what's actually visible.
+    F.groundHeightAt = function (x, z) {
+      var h = 0;
+      for (var c = 0; c < F.craters.length; c++) {
+        var cr = F.craters[c];
+        var dist = Math.hypot(x - cr.x, z - cr.z);
+        if (dist > cr.radius * 1.15) continue;
+        h += craterProfile(dist, cr.radius, cr.depth, cr.rim);
+      }
+      return h;
+    };
+
+    // Digs a new crater centered at `center` (a world-space position; y is
+    // ignored) into the ground mesh itself.
+    F.digCrater = function (center, radius, depth, rim) {
+      var cr = { x: center.x, z: center.z, radius: radius, depth: depth, rim: rim };
+      F.craters.push(cr);
+      var influence = radius * 1.15;
+      for (var i = 0; i < groundVertCount; i++) {
+        var vx = groundVX[i], vz = groundVZ[i];
+        var dist = Math.hypot(vx - cr.x, vz - cr.z);
+        if (dist > influence) continue;
+        var delta = craterProfile(dist, radius, depth, rim);
+        if (delta === 0) continue;
+        groundPos.setY(i, groundPos.getY(i) + delta);
+      }
+      groundPos.needsUpdate = true;
+      groundGeo.computeVertexNormals();
+      groundGeo.computeBoundingSphere();
     };
 
     // Dust motes drifting in the moonlight

@@ -257,7 +257,8 @@
 
     walk.vel -= GRAVITY * dt;
     walk.pos.y += walk.vel * dt;
-    if (walk.pos.y <= EYE_H) { walk.pos.y = EYE_H; walk.vel = 0; walk.grounded = true; }
+    var groundY = EYE_H + (forest.groundHeightAt ? forest.groundHeightAt(walk.pos.x, walk.pos.z) : 0);
+    if (walk.pos.y <= groundY) { walk.pos.y = groundY; walk.vel = 0; walk.grounded = true; }
 
     var r = Math.hypot(walk.pos.x, walk.pos.z);
     if (r > WALK_RADIUS) { var k = WALK_RADIUS / r; walk.pos.x *= k; walk.pos.z *= k; }

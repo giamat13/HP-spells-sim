@@ -12,12 +12,14 @@
   var AIM_DIST = 13, GRAVITY = 13;
 
   var NORMAL = {
-    radius: 9, igniteRadius: 6.5, flameCount: 4, emberCount: 46, smokeCount: 5,
-    debrisCount: 50, craterR: 2.2, lightPeak: 6.5, shakeAmt: 1.0
+    radius: 13, igniteRadius: 9, flameCount: 5, emberCount: 62, smokeCount: 6,
+    debrisCount: 75, craterR: 3.4, craterDepth: 1.0, craterRim: 0.4, flameScale: 1.15,
+    lightPeak: 9, lightRange: 20, shakeAmt: 1.35
   };
   var MAXIMA = {
-    radius: 16, igniteRadius: 11, flameCount: 8, emberCount: 80, smokeCount: 9,
-    debrisCount: 90, craterR: 3.8, lightPeak: 11, shakeAmt: 1.7
+    radius: 23, igniteRadius: 15, flameCount: 10, emberCount: 110, smokeCount: 11,
+    debrisCount: 140, craterR: 5.8, craterDepth: 1.9, craterRim: 0.65, flameScale: 1.6,
+    lightPeak: 16, lightRange: 32, shakeAmt: 2.3
   };
 
   function flameTexture() {
@@ -219,11 +221,21 @@
       computeTarget(pose, basePos);
       profile = maxima ? MAXIMA : NORMAL;
       activeMaxima = !!maxima;
-      origins = gatherOrigins(basePos, profile);
 
       if (forest.fellTrees) forest.fellTrees(basePos, profile.radius);
 
-      // Crater decal, faded in over the first fraction of a second.
+      // Actually dig a bowl-shaped pit into the ground mesh, and drop the
+      // blast's own origin down onto the new crater floor so the fire,
+      // embers, debris and light all erupt out of the hole itself.
+      if (forest.digCrater) {
+        forest.digCrater(basePos, profile.craterR, profile.craterDepth, profile.craterRim);
+        if (forest.groundHeightAt) basePos.y = forest.groundHeightAt(basePos.x, basePos.z) + 0.04;
+      }
+
+      origins = gatherOrigins(basePos, profile);
+
+      // Crater decal, faded in over the first fraction of a second, resting
+      // right on the new pit floor.
       var crater = new THREE.Mesh(
         new THREE.PlaneGeometry(1, 1),
         new THREE.MeshBasicMaterial({
@@ -231,8 +243,8 @@
         }));
       crater.rotation.x = -Math.PI / 2;
       crater.rotation.z = Math.random() * Math.PI * 2;
-      crater.position.set(basePos.x, 0.012, basePos.z);
-      var cs = profile.craterR * 2;
+      crater.position.set(basePos.x, basePos.y + 0.015, basePos.z);
+      var cs = profile.craterR * 2.3;
       crater.scale.set(cs, cs, 1);
       scene.add(crater);
       craterFades.push({ mesh: crater, t: 0 });
@@ -244,8 +256,8 @@
           dPos[i * 3 + 1] = basePos.y + 0.1;
           dPos[i * 3 + 2] = basePos.z;
           var ang = Math.random() * Math.PI * 2;
-          var speedH = (2 + Math.random() * 3.4) * (activeMaxima ? 1.3 : 1);
-          var speedV = (4 + Math.random() * 5.5) * (activeMaxima ? 1.25 : 1);
+          var speedH = (2.4 + Math.random() * 4.2) * (activeMaxima ? 1.5 : 1.15);
+          var speedV = (4.5 + Math.random() * 6.5) * (activeMaxima ? 1.45 : 1.15);
           dVel[i * 3] = Math.cos(ang) * speedH;
           dVel[i * 3 + 1] = speedV;
           dVel[i * 3 + 2] = Math.sin(ang) * speedH;
@@ -275,6 +287,7 @@
       }
       embers.visible = true;
 
+      blastLight.distance = profile.lightRange;
       blastLight.position.copy(basePos);
       blastLight.position.y += 0.6;
 
@@ -396,7 +409,7 @@
           forigin.y + rise2 * jitter * fireHeight * 0.5 + 0.05,
           forigin.z + Math.cos(t * 1.7 + seed) * 0.06
         );
-        var baseW = core ? 1.1 : 0.68, baseH = core ? 1.8 : 1.2;
+        var baseW = (core ? 1.1 : 0.68) * profile.flameScale, baseH = (core ? 1.8 : 1.2) * profile.flameScale;
         var sc = fireHeight * jitter;
         flm.scale.set(baseW * sc, baseH * sc, 1);
         flm.material.rotation = Math.sin(t * 1.4 + seed) * 0.12;
