@@ -99,12 +99,11 @@
     if (hooks.onCast) hooks.onCast('leviosa', null);
   }
 
-  // "It's LeviOsa, not LevioSAH" — say it wrong (the meme mispronunciation,
-  // drawn out with extra trailing A's) and the charm fizzles: only the clip
-  // plays, nothing actually levitates.
+  // "It's LeviOsa, not LevioSAH" — the meme mispronunciation, drawn out with
+  // extra trailing A's. Still casts the spell, just also plays the clip.
   function castLeviosaMeme() {
-    if (casting) return;
     AudioSys.playLeviosaMeme();
+    castLeviosa();
   }
 
   // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
@@ -137,71 +136,16 @@
 
   var mic = { supported: false, active: false, wantOn: false };
 
-  /* Detecting the drawn-out meme pronunciation from speech.
-     The transcript can't tell us: recognition normalizes whatever you say
-     into a dictionary word, so "leviosaaaa" always comes back as "leviosa".
-     Recognition event timing can't tell us either: the final result only
-     arrives after Chrome decides you stopped talking, so any duration
-     measured from it is inflated by that end-of-speech wait (this is why
-     earlier attempts fired on every utterance).
-     So we listen to the mic ourselves in parallel and measure how long the
-     voice actually sustains — real elongation shows up as a long voiced run.
-     Calibrate with UI.voiceTuning: set .debug = true to log measured values,
-     then adjust .msPerWord (elongation threshold) or .rms (mic sensitivity). */
-  var voice = {
-    debug: false,
-    rms: 0.012,          // loudness above which we count audio as speech
-    msPerWord: 850,      // ms per spoken word above which it reads as drawn out
-    silenceMs: 220,      // quiet gap that ends an utterance
-    lastMs: 0,
-    _ctx: null, _analyser: null, _buf: null,
-    _voiced: false, _startT: 0, _quietT: 0, _timer: null
-  };
-
-  function voiceMeterPoll() {
-    voice._analyser.getFloatTimeDomainData(voice._buf);
-    var sum = 0;
-    for (var i = 0; i < voice._buf.length; i++) sum += voice._buf[i] * voice._buf[i];
-    var rms = Math.sqrt(sum / voice._buf.length);
-    var t = performance.now();
-    if (rms > voice.rms) {
-      if (!voice._voiced) { voice._voiced = true; voice._startT = t; }
-      voice._quietT = 0;
-    } else if (voice._voiced) {
-      if (!voice._quietT) voice._quietT = t;
-      else if (t - voice._quietT > voice.silenceMs) {
-        voice.lastMs = voice._quietT - voice._startT;
-        voice._voiced = false;
-        voice._quietT = 0;
-        if (voice.debug) console.log('[voice] utterance', Math.round(voice.lastMs) + 'ms');
-      }
-    }
-  }
-
-  function startVoiceMeter() {
-    if (voice._ctx || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      voice._ctx = new AC();
-      var src = voice._ctx.createMediaStreamSource(stream);
-      var an = voice._ctx.createAnalyser();
-      an.fftSize = 1024;
-      src.connect(an);                       // analyser only, never to destination
-      voice._analyser = an;
-      voice._buf = new Float32Array(an.fftSize);
-      voice._timer = setInterval(voiceMeterPoll, 50);
-    }).catch(function () {});                // no mic permission: meme stays typed-only
-  }
-
-  // How drawn-out the last utterance was, per word — long "leviosaaaa" reads
-  // high, a brisk "wingardium leviosa" reads low.
-  function spokenMsPerWord(heard) {
-    var words = heard.trim().split(/\s+/).length || 1;
-    var perWord = voice.lastMs / words;
-    if (voice.debug) console.log('[voice] "' + heard + '"', Math.round(perWord) + 'ms/word');
-    return perWord;
-  }
+  // Speech recognition normalizes whatever you say into a proper dictionary
+  // word — it will never transcribe a drawn-out "leviosaaaa" as literal
+  // repeated letters, so the meme can't be caught from the transcript text
+  // the way it can from typed input. Instead we time the utterance itself
+  // (onspeechstart -> final result): a theatrically drawn-out "leviosaaaa"
+  // takes noticeably longer to say than a normal "leviosa".
+  // ponytail: fixed threshold, not adaptive to mic sensitivity/speech rate —
+  // revisit with per-user calibration if this ever misfires a lot.
+  var MEME_SPOKEN_MS = 1450;
+  var utterStartT = 0;
 
   function micStartRecognition() {
     if (!mic.supported || mic.active) return;
@@ -210,15 +154,17 @@
     rec.lang = 'en-US';
     rec.continuous = true;
     rec.interimResults = false;
+    rec.onspeechstart = function () { utterStartT = performance.now(); };
     rec.onresult = function (ev) {
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
+        var spokenMs = utterStartT ? (performance.now() - utterStartT) : 0;
+        utterStartT = 0;
         if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
         else if (LEVIOSA_MEME_RE.test(heard)) castLeviosaMeme();
         else if (isLeviosaPhrase(heard)) {
-          if (spokenMsPerWord(heard) > voice.msPerWord) castLeviosaMeme();
-          else castLeviosa();
+          if (spokenMs > MEME_SPOKEN_MS) castLeviosaMeme(); else castLeviosa();
         }
         else if (NOX_RE.test(heard)) castLumosOff();
         else if (/lumos/i.test(heard) && /maxim/i.test(heard)) castLumosMaxima();
@@ -253,7 +199,6 @@
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
-      startVoiceMeter();
     });
   }
 
@@ -261,7 +206,6 @@
     if (!mic.supported) return;
     mic.wantOn = true;
     micStartRecognition();
-    startVoiceMeter();
   }
 
   /* ---------- pointer sparkles ---------- */
@@ -493,7 +437,6 @@
     },
 
     update: updateSparkles,
-    startVoice: startVoice,
-    voiceTuning: voice          // console-tunable: .debug, .msPerWord, .rms
+    startVoice: startVoice
   };
 })();
