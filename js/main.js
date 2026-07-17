@@ -75,8 +75,9 @@
 
   var lumosCaptionTimer = null;
   lumos.onPhase = function (state) {
-    UI.caption(state === 'on' ? 'Lumos!' : 'Nox.');
-    AudioSys.lumosToggle(state === 'on');
+    var text = state === 'off' ? 'Nox.' : (state === 'maxima' ? 'Lumos Maxima!' : 'Lumos!');
+    UI.caption(text);
+    AudioSys.lumosToggle(state !== 'off', state === 'maxima');
     clearTimeout(lumosCaptionTimer);
     lumosCaptionTimer = setTimeout(function () { UI.caption(null); }, 1300);
   };
@@ -281,7 +282,7 @@
           UI.recordCast(payload.id);
         }
       } else if (spellId === 'lumos') {
-        lumos.set(payload);
+        lumos.set(payload.on, payload.maxima);
       }
     },
     onCapture: capture,
@@ -315,10 +316,11 @@
     UI.update(dt);
     updateCamera(t, dt);
 
-    // mood: patronus and lumos light tint the fog and lift the ambient level;
-    // dementor weather darkens all of it
+    // mood: patronus light and Lumos Maxima tint the fog and lift the ambient
+    // level scene-wide; plain Lumos stays a purely local point light so it
+    // only lights what's actually close to the wand. Dementor weather darkens all.
     var glow = patronus.intensity;
-    var lglow = lumos.intensity;
+    var lglow = lumos.intensity * (lumos.maxima ? 1 : 0);
     fogTmp.copy(dementorOn ? dementorFog : baseFog)
       .lerp(patronusFog, glow * 0.8)
       .lerp(lumosFog, lglow * 0.55);

@@ -79,21 +79,32 @@
 
   function castLumosOn() {
     if (casting) return;
-    if (hooks.onCast) hooks.onCast('lumos', true);
+    if (hooks.onCast) hooks.onCast('lumos', { on: true, maxima: false });
+  }
+  function castLumosMaxima() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('lumos', { on: true, maxima: true });
   }
   function castLumosOff() {
     if (casting) return;
-    if (hooks.onCast) hooks.onCast('lumos', false);
+    if (hooks.onCast) hooks.onCast('lumos', { on: false });
   }
   function toggleLumos() {
     if (casting) return;
-    if (hooks.onCast) hooks.onCast('lumos', 'toggle');
+    if (hooks.onCast) hooks.onCast('lumos', { on: 'toggle' });
   }
+
+  // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
+  // routinely mishears one for the other — accept the common variants.
+  var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
+  var LUMOS_MAXIMA_RE = /^\s*lumos\s*maxima\b/i;
+  var LUMOS_RE = /^\s*lumos\b/i;
 
   function tryIncantation(text) {
     if (/expecto\s*patronum/i.test(text)) { castPatronus(); return true; }
-    if (/^\s*nox\b/i.test(text)) { castLumosOff(); return true; }
-    if (/^\s*lumos\b/i.test(text)) { castLumosOn(); return true; }
+    if (NOX_RE.test(text)) { castLumosOff(); return true; }
+    if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
+    if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
     return false;
   }
 
@@ -113,7 +124,8 @@
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
         if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
-        else if (/\bnox\b/i.test(heard)) castLumosOff();
+        else if (NOX_RE.test(heard)) castLumosOff();
+        else if (/lumos/i.test(heard) && /maxim/i.test(heard)) castLumosMaxima();
         else if (/lumos/i.test(heard)) castLumosOn();
       }
     };
@@ -141,7 +153,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, or “Nox”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, or “Nox”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();

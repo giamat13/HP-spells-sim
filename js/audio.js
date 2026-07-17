@@ -268,24 +268,26 @@
     };
   }
 
-  // Lumos: a small bright ping kindling; Nox: the same tone falling and fading.
-  function lumosToggle(on) {
+  // Lumos: a small bright ping kindling; Maxima: a bigger swelling chord;
+  // Nox: the same tone falling and fading.
+  function lumosToggle(on, big) {
     var t = now();
-    pluck(on ? 86 : 74, t, 0.3);
+    pluck(on ? (big ? 91 : 86) : 74, t, big ? 0.5 : 0.3);
+    if (big && on) pluck(98, t + 0.08, 0.3);
     var o = ctx.createOscillator();
     o.type = 'sine';
     if (on) {
       o.frequency.setValueAtTime(700, t);
-      o.frequency.exponentialRampToValueAtTime(1500, t + 0.15);
+      o.frequency.exponentialRampToValueAtTime(big ? 2000 : 1500, t + (big ? 0.22 : 0.15));
     } else {
       o.frequency.setValueAtTime(500, t);
       o.frequency.exponentialRampToValueAtTime(160, t + 0.35);
     }
     var g = ctx.createGain();
-    g.gain.setValueAtTime(0.05, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    g.gain.setValueAtTime(big ? 0.08 : 0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (big ? 0.55 : 0.4));
     o.connect(g); out(g, 0.7, 0.4);
-    o.start(t); o.stop(t + 0.42);
+    o.start(t); o.stop(t + (big ? 0.6 : 0.42));
   }
 
   // Bright chord when the animal takes shape.
@@ -446,7 +448,7 @@
       return buildup(d);
     },
     formationChime: function () { if (ctx && !muted) formationChime(); },
-    lumosToggle: function (on) { if (ctx && !muted) lumosToggle(on); },
+    lumosToggle: function (on, big) { if (ctx && !muted) lumosToggle(on, big); },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);
