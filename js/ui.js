@@ -217,18 +217,20 @@
     return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
   }
 
-  // "Avada Kedavra" — same forgiving treatment as Expecto Patronum: accept
-  // common mishearings of each word (regex sound-shape first, then the
-  // fuzzy edit-distance fallback), and require both words present but not
-  // necessarily in order, so a mangled ASR result still casts the curse.
-  var AVADA_RE = /\bavada\b/i;
-  var KEDAVRA_RE = /\bk[ae]d[ae]?vr?[ae]\b/i;
-  var AVADA_TARGETS = ['avada', 'avara', 'avadah', 'abada'];
-  var KEDAVRA_TARGETS = ['kedavra', 'kedavera', 'kadavra', 'kadabra', 'cadabra', 'kedabra', 'kadavera'];
+  // "Avada Kedavra" — English ASR almost never returns both words cleanly;
+  // it collapses the phrase into things like "abracadabra", "a cadaver",
+  // "had a cadaver", "of other cadaver". So instead of requiring both words,
+  // we trigger on the distinctive second-word sound ALONE — "kedavra" /
+  // "cadaver" / "cadabra" isn't close to any other spell here — plus the
+  // whole-phrase mishears ("abracadabra"). The "avada"/"cadaver" combo also
+  // still works when ASR does get both.
+  var KEDAVRA_RE = /\b(k[ae]d[ae]?vr?[ae]|cadav(er|re|ra)|cadabra|kadabra)\b/i;
+  var ABRACADABRA_RE = /\babra\s*cadabra\b/i;
+  var KEDAVRA_TARGETS = ['kedavra', 'kedavera', 'kadavra', 'kadabra', 'cadabra',
+    'kedabra', 'kadavera', 'cadaver', 'cadavre', 'cadavera'];
   function isAvadaPhrase(text) {
-    var hasAvada = AVADA_RE.test(text) || phraseHasFuzzyWord(text, AVADA_TARGETS);
-    var hasKedavra = KEDAVRA_RE.test(text) || phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
-    return hasAvada && hasKedavra;
+    return KEDAVRA_RE.test(text) || ABRACADABRA_RE.test(text) ||
+      phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
   }
 
   function tryIncantation(text) {
