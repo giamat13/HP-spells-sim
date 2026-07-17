@@ -41,9 +41,14 @@
   var leviosa = Leviosa.create(scene, forest);
   var incendio = Incendio.create(scene, forest);
   var accio = Accio.create(scene, forest);
+  var depulso = Depulso.create(scene, forest);
   var bombarda = Bombarda.create(scene, forest);
   var zombies = Zombies.create(scene, forest, bombarda, incendio);
   var avada = Avada.create(scene, zombies);
+  incendio.zombies = zombies;
+  depulso.zombies = zombies;
+  depulso.incendio = incendio;
+  accio.zombies = zombies;
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -166,6 +171,7 @@
   leviosa.getCameraPose = getCameraPose;
   incendio.getCameraPose = getCameraPose;
   accio.getCameraPose = getCameraPose;
+  depulso.getCameraPose = getCameraPose;
   bombarda.getCameraPose = getCameraPose;
   zombies.getCameraPose = getCameraPose;
   avada.getCameraPose = getCameraPose;
@@ -252,13 +258,25 @@
     if (text) accioCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
+  var depulsoCaptionTimer = null;
+  depulso.onPhase = function (state) {
+    var text = null, life = 1600;
+    if (state === 'push') { text = 'Depulso!'; AudioSys.accioPull(); }
+    else if (state === 'burnHit') { AudioSys.accioCatch(); }
+    else if (state === 'none') { text = 'Nothing close enough to banish.'; }
+    UI.caption(text);
+    clearTimeout(depulsoCaptionTimer);
+    if (text) depulsoCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
   var bombardaCrackle = null;
   var bombardaCaptionTimer = null;
   var bombardaMaximaFlag = false;
+  var confringoCastFlag = false;
   bombarda.onPhase = function (state) {
     var text = null, life = 1600;
     if (state === 'blast') {
-      text = bombardaMaximaFlag ? 'BOMBARDA MAXIMA!' : 'Bombarda!';
+      text = confringoCastFlag ? 'Confringo!' : (bombardaMaximaFlag ? 'BOMBARDA MAXIMA!' : 'Bombarda!');
       AudioSys.bombardaBlast(bombardaMaximaFlag);
     } else if (state === 'burn') {
       bombardaCrackle = AudioSys.bombardaCrackle();
@@ -511,9 +529,16 @@
         incendio.cast();
       } else if (spellId === 'accio') {
         accio.cast();
+      } else if (spellId === 'depulso') {
+        depulso.cast();
       } else if (spellId === 'bombarda') {
+        confringoCastFlag = false;
         bombardaMaximaFlag = !!(payload && payload.maxima);
         bombarda.cast(bombardaMaximaFlag);
+      } else if (spellId === 'confringo') {
+        confringoCastFlag = true;
+        bombardaMaximaFlag = false;
+        bombarda.cast(false);
       } else if (spellId === 'avada') {
         avada.cast();
       }
@@ -543,7 +568,7 @@
   // small handle for testing/tinkering from the console
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
-    bombarda: bombarda, zombies: zombies, avada: avada,
+    depulso: depulso, bombarda: bombarda, zombies: zombies, avada: avada,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -560,6 +585,7 @@
     leviosa.update(t, dt);
     incendio.update(t, dt);
     accio.update(t, dt);
+    depulso.update(t, dt);
     bombarda.update(t, dt);
     zombies.update(t, dt);
     avada.update(t, dt);

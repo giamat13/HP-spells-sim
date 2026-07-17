@@ -103,12 +103,14 @@
       active: false,
       phase: null,
       onPhase: function () {},
+      zombies: null, // set from main.js; lets Incendio target a nearby enemy directly
       getCameraPose: function () { return { pos: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, -1) }; }
     };
 
     var basePos = new THREE.Vector3(), phaseT = 0;
     I.pos = basePos; // exposed so other systems (zombies) can check proximity
     var toObj = new THREE.Vector3(), fallback = new THREE.Vector3();
+    var followTarget = null; // a zombie the fire is currently pinned to
 
     function findTarget() {
       var pose = I.getCameraPose();
@@ -140,7 +142,14 @@
         phaseT = 0; I.phase = 'fade'; I.onPhase('fade');
         return true;
       }
-      basePos.copy(findTarget());
+      // A nearby enemy in view takes priority over a shrub/the ground — the
+      // fire is pinned to it (followTarget) and chases it every frame below.
+      followTarget = null;
+      var pose = I.getCameraPose();
+      var enemy = I.zombies && I.zombies.findNearestAlive ?
+        I.zombies.findNearestAlive(pose.pos, FIRE_RANGE, pose.dir) : null;
+      if (enemy) { followTarget = enemy; basePos.copy(enemy.pos); }
+      else basePos.copy(findTarget());
       phaseT = 0;
       I.active = true;
       I.phase = 'ignite';
@@ -164,6 +173,7 @@
 
     I.update = function (t, dt) {
       if (!I.active) return;
+      if (followTarget && followTarget.alive) basePos.copy(followTarget.pos);
       phaseT += dt;
 
       if (I.phase === 'ignite' && phaseT >= IGNITE_TIME) {

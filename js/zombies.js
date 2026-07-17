@@ -146,13 +146,14 @@
         yaw: rand(0, Math.PI * 2),
         target: null, waitT: rand(0, 2),
         attackCd: rand(ATTACK_MIN_CD, ATTACK_MAX_CD),
-        fallT: 0, respawnT: 0
+        fallT: 0, respawnT: 0, pulled: false
       };
       mesh.position.copy(z.pos);
       mesh.rotation.y = z.yaw;
       return z;
     }
     for (var n = 0; n < COUNT; n++) list.push(makeZombie());
+    Z.list = list; // exposed so Accio can consider zombies as summon targets
 
     function pickTarget(z) {
       var a = Math.random() * Math.PI * 2, r = rand(2, WANDER_R);
@@ -170,6 +171,7 @@
       z.target = null;
       z.waitT = rand(0, 1.5);
       z.attackCd = rand(ATTACK_MIN_CD, ATTACK_MAX_CD);
+      z.pulled = false;
       z.mesh.visible = true;
     }
 
@@ -212,6 +214,41 @@
       spot.y += 1.1;
       killZombie(best);
       return spot;
+    };
+
+    // Finds the nearest living zombie to `fromPos` (within `maxRange`, optionally
+    // restricted to a forward-facing cone), without harming it — used by Incendio
+    // to pick an enemy to set alight and have the fire follow.
+    Z.findNearestAlive = function (fromPos, maxRange, facing) {
+      var range = maxRange || Infinity, best = null, bestD = Infinity;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive) continue;
+        tmpToTarget.subVectors(z.pos, fromPos);
+        var d = tmpToTarget.length();
+        if (d > range) continue;
+        if (facing && d > 0.01) {
+          tmpToTarget.multiplyScalar(1 / d);
+          if (tmpToTarget.dot(facing) < 0.35) continue;
+        }
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      return best;
+    };
+
+    // Damages the nearest living zombie within `radius` of `pos` by a flat
+    // amount — used by Depulso to hurt whatever it knocks a burning object into.
+    Z.damageNearest = function (pos, radius, amount) {
+      var best = null, bestD = radius;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive) continue;
+        var d = z.pos.distanceTo(pos);
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      if (!best) return null;
+      damage(best, amount);
+      return best.pos.clone();
     };
 
     function hitPlayer(dmg) {
@@ -301,23 +338,26 @@
         }
         if (!z.alive) continue;
 
-        // Wander within a leash around its spawn point.
-        z.waitT -= dt;
-        if (!z.target) {
-          if (z.waitT <= 0) pickTarget(z);
-        } else {
-          tmpDiff.set(z.target.x - z.pos.x, 0, z.target.z - z.pos.z);
-          var d = tmpDiff.length();
-          if (d < 0.35) {
-            z.target = null;
-            z.waitT = rand(1, 4);
+        // Wander within a leash around its spawn point — suspended while Accio
+        // has it in the air, so the pull isn't fighting its own AI.
+        if (!z.pulled) {
+          z.waitT -= dt;
+          if (!z.target) {
+            if (z.waitT <= 0) pickTarget(z);
           } else {
-            tmpDiff.multiplyScalar(1 / d);
-            z.pos.x += tmpDiff.x * WALK_SPEED * dt;
-            z.pos.z += tmpDiff.z * WALK_SPEED * dt;
-            var targetYaw = Math.atan2(tmpDiff.x, tmpDiff.z);
-            var dy = ((targetYaw - z.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-            z.yaw += dy * Math.min(1, dt * 4);
+            tmpDiff.set(z.target.x - z.pos.x, 0, z.target.z - z.pos.z);
+            var d = tmpDiff.length();
+            if (d < 0.35) {
+              z.target = null;
+              z.waitT = rand(1, 4);
+            } else {
+              tmpDiff.multiplyScalar(1 / d);
+              z.pos.x += tmpDiff.x * WALK_SPEED * dt;
+              z.pos.z += tmpDiff.z * WALK_SPEED * dt;
+              var targetYaw = Math.atan2(tmpDiff.x, tmpDiff.z);
+              var dy = ((targetYaw - z.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+              z.yaw += dy * Math.min(1, dt * 4);
+            }
           }
         }
         z.pos.y = groundY(z.pos.x, z.pos.z);
@@ -335,7 +375,7 @@
         z.barFg.material.color.copy(barCol);
 
         // Curse attack, on its own cooldown, only while enabled and in range.
-        if (Z.attackEnabled) {
+        if (Z.attackEnabled && !z.pulled) {
           z.attackCd -= dt;
           if (z.attackCd <= 0 && z.pos.distanceTo(pose.pos) <= ATTACK_RANGE) {
             fireCurse(z, pose.pos);
