@@ -214,6 +214,41 @@
       return spot;
     };
 
+    // Finds the nearest living zombie to `fromPos` (within `maxRange`, optionally
+    // restricted to a forward-facing cone), without harming it — used by Incendio
+    // to pick an enemy to set alight and have the fire follow.
+    Z.findNearestAlive = function (fromPos, maxRange, facing) {
+      var range = maxRange || Infinity, best = null, bestD = Infinity;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive) continue;
+        tmpToTarget.subVectors(z.pos, fromPos);
+        var d = tmpToTarget.length();
+        if (d > range) continue;
+        if (facing && d > 0.01) {
+          tmpToTarget.multiplyScalar(1 / d);
+          if (tmpToTarget.dot(facing) < 0.35) continue;
+        }
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      return best;
+    };
+
+    // Damages the nearest living zombie within `radius` of `pos` by a flat
+    // amount — used by Depulso to hurt whatever it knocks a burning object into.
+    Z.damageNearest = function (pos, radius, amount) {
+      var best = null, bestD = radius;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive) continue;
+        var d = z.pos.distanceTo(pos);
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      if (!best) return null;
+      damage(best, amount);
+      return best.pos.clone();
+    };
+
     function hitPlayer(dmg) {
       Z.playerHP = Math.max(0, Z.playerHP - dmg);
       Z.onPlayerHit(dmg);

@@ -108,6 +108,10 @@
     if (hooks.onCast) hooks.onCast('accio', null);
   }
 
+  function castDepulso() {
+    if (hooks.onCast) hooks.onCast('depulso', null);
+  }
+
   function castBombarda() {
     if (hooks.onCast) hooks.onCast('bombarda', { maxima: false });
   }
@@ -117,6 +121,12 @@
 
   function castAvada() {
     if (hooks.onCast) hooks.onCast('avada', null);
+  }
+
+  // Confringo is presented as its own spell, but under the hood it's just
+  // Bombarda's blast fired with the "confringo" caption and no Maxima variant.
+  function castConfringo() {
+    if (hooks.onCast) hooks.onCast('confringo', null);
   }
 
   // "Expecto Patronum" is long and Latin, so both ASR and unsure speakers
@@ -154,6 +164,12 @@
   // "Accio" is short too, and gets heard/pronounced as "akio"/"atzio"/"axio"/
   // "atio" etc. — match the a + k/t/ts/x + i/y + o sound shape broadly.
   var ACCIO_RE = /\ba[ck]{1,2}[iy]o\b|\bat[sz]?[iy]o\b|\bax[iy]o\b|\bas[iy]o\b/i;
+  // "Depulso" gets heard/pronounced as "depulso"/"depulzo"/"depolso"/"dupulso"
+  // etc. — match the d(e/i) + p + u/o + l + s/z + o sound shape broadly.
+  var DEPULSO_RE = /\bd[ei]?\s*p[uo]ls[oe]\b/i;
+  // "Confringo" is another long-ish Latin-sounding word ASR mangles — match the
+  // con + f/v + r + i/e + n + g/k + o sound shape broadly.
+  var CONFRINGO_RE = /\bcon?[fv]r[ie]n[gk]o\b/i;
 
   // Fallback fuzzy matcher for whenever the regex sound-shapes above still
   // miss a mis-hearing entirely (English ASR forcing the word toward some
@@ -200,13 +216,18 @@
 
   var INCENDIO_TARGETS = ['incendio', 'incendo', 'encendio', 'insendio', 'inzendio', 'incendia'];
   var ACCIO_TARGETS = ['accio', 'akio', 'atio', 'atzio', 'axio', 'asio', 'atsio', 'ackio'];
+  var DEPULSO_TARGETS = ['depulso', 'depulzo', 'depolso', 'dupulso', 'depulsa', 'depuso'];
   var BOMBARDA_TARGETS = ['bombarda', 'bombardo', 'bambarda', 'bombardia', 'bombaria'];
+  var CONFRINGO_TARGETS = ['confringo', 'confringgo', 'confrengo', 'confrigo', 'confrinko'];
 
   function isIncendioPhrase(text) {
     return INCENDIO_RE.test(text) || phraseHasFuzzyWord(text, INCENDIO_TARGETS);
   }
   function isAccioPhrase(text) {
     return ACCIO_RE.test(text) || phraseHasFuzzyWord(text, ACCIO_TARGETS);
+  }
+  function isDepulsoPhrase(text) {
+    return DEPULSO_RE.test(text) || phraseHasFuzzyWord(text, DEPULSO_TARGETS);
   }
 
   // "Bombarda Maxima" must be checked before plain "Bombarda", the same way
@@ -215,6 +236,9 @@
   var BOMBARDA_RE = /\bbombarda\b/i;
   function isBombardaPhrase(text) {
     return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
+  }
+  function isConfringoPhrase(text) {
+    return CONFRINGO_RE.test(text) || phraseHasFuzzyWord(text, CONFRINGO_TARGETS);
   }
 
   // "Avada Kedavra" — English ASR almost never returns both words cleanly;
@@ -241,7 +265,9 @@
     if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
     if (isIncendioPhrase(text)) { castIncendio(); return true; }
     if (isAccioPhrase(text)) { castAccio(); return true; }
+    if (isDepulsoPhrase(text)) { castDepulso(); return true; }
     if (BOMBARDA_MAXIMA_RE.test(text)) { castBombardaMaxima(); return true; }
+    if (isConfringoPhrase(text)) { castConfringo(); return true; }
     if (isBombardaPhrase(text)) { castBombarda(); return true; }
     if (isAvadaPhrase(text)) { castAvada(); return true; }
     return false;
@@ -269,7 +295,9 @@
         if (LUMOS_RE.test(heard)) { castLumosOn(); continue; }
         if (isIncendioPhrase(heard)) { castIncendio(); continue; }
         if (isAccioPhrase(heard)) { castAccio(); continue; }
+        if (isDepulsoPhrase(heard)) { castDepulso(); continue; }
         if (BOMBARDA_MAXIMA_RE.test(heard)) { castBombardaMaxima(); continue; }
+        if (isConfringoPhrase(heard)) { castConfringo(); continue; }
         if (isBombardaPhrase(heard)) { castBombarda(); continue; }
         if (isAvadaPhrase(heard)) { castAvada(); continue; }
       }
@@ -298,7 +326,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, “Bombarda Maxima”, or “Avada Kedavra”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, or “Avada Kedavra”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -418,7 +446,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, or “Avada Kedavra”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, or “Avada Kedavra”.';
         } else {
           els.input.value = '';
         }
@@ -464,11 +492,25 @@
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castAccio(); }
         });
       }
+      var spellDepulso = document.getElementById('spell-depulso');
+      if (spellDepulso) {
+        spellDepulso.addEventListener('click', castDepulso);
+        spellDepulso.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castDepulso(); }
+        });
+      }
       var spellBombarda = document.getElementById('spell-bombarda');
       if (spellBombarda) {
         spellBombarda.addEventListener('click', castBombarda);
         spellBombarda.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castBombarda(); }
+        });
+      }
+      var spellConfringo = document.getElementById('spell-confringo');
+      if (spellConfringo) {
+        spellConfringo.addEventListener('click', castConfringo);
+        spellConfringo.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castConfringo(); }
         });
       }
       var spellAvada = document.getElementById('spell-avada');
