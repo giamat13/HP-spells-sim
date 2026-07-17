@@ -514,6 +514,26 @@
         viewBtn.title = third ? 'First-person view (C)' : 'Third-person view (C)';
       };
 
+      var zombieAttackOn = !!store.get('zombieAttack', true);
+      var zombieBtn = document.getElementById('zombie-btn');
+      function paintZombieBtn() {
+        zombieBtn.classList.toggle('active', zombieAttackOn);
+        zombieBtn.title = zombieAttackOn
+          ? 'Zombies attack you (click to make them peaceful)'
+          : 'Zombies are peaceful (click to let them attack)';
+      }
+      paintZombieBtn();
+      zombieBtn.addEventListener('click', function () {
+        zombieAttackOn = !zombieAttackOn;
+        store.set('zombieAttack', zombieAttackOn);
+        paintZombieBtn();
+        if (hooks.onZombieToggle) hooks.onZombieToggle(zombieAttackOn);
+      });
+      window.UI.zombiesAttackEnabled = function () { return zombieAttackOn; };
+
+      els.healthFill = document.getElementById('health-fill');
+      els.healthText = document.getElementById('health-text');
+
       var weatherOn = false;
       var weatherBtn = document.getElementById('weather-btn');
       weatherBtn.addEventListener('click', function () {
@@ -591,6 +611,12 @@
     },
 
     update: updateSparkles,
-    startVoice: startVoice
+    startVoice: startVoice,
+
+    setPlayerHealth: function (hp, max) {
+      var pct = Math.max(0, Math.min(100, (hp / max) * 100));
+      els.healthFill.style.width = pct + '%';
+      els.healthText.textContent = Math.ceil(hp) + '/' + max;
+    }
   };
 })();

@@ -65,6 +65,7 @@
     <button id="view-btn" class="icon-btn" title="Third-person view (C)">🚶</button>
     <button id="capture-btn" class="icon-btn" title="Capture this moment">📷</button>
     <button id="weather-btn" class="icon-btn" title="Dementor weather">☁</button>
+    <button id="zombie-btn" class="icon-btn" title="Zombies attack you">🧟</button>
     <button id="mute-btn" class="icon-btn" title="Mute">♪</button>
     <button id="menu-toggle" class="icon-btn" title="Menu">☰</button>
   </div>
@@ -111,6 +112,13 @@
     </div>
   </div>
 
+  <!-- Player health bar -->
+  <div id="player-health" class="ui-panel">
+    <span class="health-label">❤</span>
+    <div class="health-track"><div id="health-fill" class="health-fill"></div></div>
+    <span id="health-text">100/100</span>
+  </div>
+
   <!-- Casting caption -->
   <div id="caption" hidden></div>
 
@@ -127,6 +135,7 @@
   <script src="js/incendio.js"></script>
   <script src="js/accio.js"></script>
   <script src="js/bombarda.js"></script>
+  <script src="js/zombies.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>

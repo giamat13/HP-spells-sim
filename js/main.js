@@ -42,6 +42,7 @@
   var incendio = Incendio.create(scene, forest);
   var accio = Accio.create(scene, forest);
   var bombarda = Bombarda.create(scene, forest);
+  var zombies = Zombies.create(scene, forest, bombarda, incendio);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -165,6 +166,15 @@
   incendio.getCameraPose = getCameraPose;
   accio.getCameraPose = getCameraPose;
   bombarda.getCameraPose = getCameraPose;
+  zombies.getCameraPose = getCameraPose;
+
+  var zombieHitCaptionTimer = null;
+  zombies.onPlayerHealth = function (hp, max) { UI.setPlayerHealth(hp, max); };
+  zombies.onPlayerHit = function () {
+    UI.caption('A curse strikes you!');
+    clearTimeout(zombieHitCaptionTimer);
+    zombieHitCaptionTimer = setTimeout(function () { UI.caption(null); }, 900);
+  };
 
   /* ---------- perspective (first-person / third-person) ---------- */
 
@@ -491,9 +501,12 @@
     onCapture: capture,
     onWeather: applyWeather,
     onMute: function (m) { AudioSys.setMuted(m); },
-    onViewToggle: toggleView
+    onViewToggle: toggleView,
+    onZombieToggle: function (on) { zombies.attackEnabled = on; }
   });
   UI.setViewMode(viewMode);
+  zombies.attackEnabled = UI.zombiesAttackEnabled();
+  UI.setPlayerHealth(zombies.playerHP, zombies.playerMaxHP);
 
   /* ---------- resize ---------- */
 
@@ -510,7 +523,7 @@
   // small handle for testing/tinkering from the console
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
-    bombarda: bombarda,
+    bombarda: bombarda, zombies: zombies,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -528,6 +541,7 @@
     incendio.update(t, dt);
     accio.update(t, dt);
     bombarda.update(t, dt);
+    zombies.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 

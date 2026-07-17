@@ -107,6 +107,7 @@
     };
 
     var basePos = new THREE.Vector3(), phaseT = 0;
+    I.pos = basePos; // exposed so other systems (zombies) can check proximity
     var toObj = new THREE.Vector3(), fallback = new THREE.Vector3();
 
     function findTarget() {

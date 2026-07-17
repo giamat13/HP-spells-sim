@@ -192,6 +192,14 @@
     var profile = NORMAL, origins = [], activeMaxima = false;
     var tmpTarget = new THREE.Vector3();
 
+    // Exposed so other systems (zombies) can check blast/burn proximity
+    // without reaching into this module's closure.
+    B.pos = basePos;
+    B.radius = 0;
+    B.igniteRadius = 0;
+    B.maxima = false;
+    B.castSeq = 0;
+
     function computeTarget(pose, out) {
       out.copy(pose.pos).addScaledVector(pose.dir, AIM_DIST);
       out.y = 0.02;
@@ -221,6 +229,10 @@
       computeTarget(pose, basePos);
       profile = maxima ? MAXIMA : NORMAL;
       activeMaxima = !!maxima;
+      B.radius = profile.radius;
+      B.igniteRadius = profile.igniteRadius;
+      B.maxima = activeMaxima;
+      B.castSeq++;
 
       if (forest.fellTrees) forest.fellTrees(basePos, profile.radius);
 
