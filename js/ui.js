@@ -462,6 +462,17 @@
         if (hooks.onCapture) hooks.onCapture();
       });
 
+      var viewBtn = document.getElementById('view-btn');
+      viewBtn.addEventListener('click', function () {
+        if (hooks.onViewToggle) hooks.onViewToggle();
+      });
+      window.UI.setViewMode = function (mode) {
+        var third = mode === 'third';
+        viewBtn.textContent = third ? '🧙' : '🚶';
+        viewBtn.classList.toggle('active', third);
+        viewBtn.title = third ? 'First-person view (C)' : 'Third-person view (C)';
+      };
+
       var weatherOn = false;
       var weatherBtn = document.getElementById('weather-btn');
       weatherBtn.addEventListener('click', function () {

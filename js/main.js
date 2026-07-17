@@ -77,6 +77,74 @@
   patronus.getWandTip = getWandTip;
   lumos.getWandTip = getWandTip;
 
+  /* ---------- player character (shown only in third-person view) ---------- */
+  /* A simple robed, hooded figure built from primitives — matches the low-poly
+     style used elsewhere (wand, animals). Origin sits at the feet. */
+
+  var player = new THREE.Group();
+  (function buildPlayer() {
+    var robe = 0x1c2135, robeDark = 0x11141f, trim = 0x8a7136, skin = 0xd9b490;
+    var robeMat = new THREE.MeshLambertMaterial({ color: robe });
+    var robeDarkMat = new THREE.MeshLambertMaterial({ color: robeDark });
+    var skinMat = new THREE.MeshLambertMaterial({ color: skin });
+    var trimMat = new THREE.MeshLambertMaterial({ color: trim, emissive: 0x1a1406 });
+
+    var legs = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.9, 8), robeDarkMat);
+    legs.position.y = 0.45;
+    player.add(legs);
+
+    var torso = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.40, 0.62, 8), robeMat);
+    torso.position.y = 1.20;
+    player.add(torso);
+
+    var collar = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.025, 6, 12), trimMat);
+    collar.position.y = 1.50;
+    collar.rotation.x = Math.PI / 2;
+    player.add(collar);
+
+    var cape = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.55, 1.15),
+      new THREE.MeshLambertMaterial({ color: robeDark, side: THREE.DoubleSide }));
+    cape.position.set(0, 1.05, -0.30);
+    cape.rotation.x = -0.12;
+    player.add(cape);
+
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8), skinMat);
+    head.position.y = 1.72;
+    player.add(head);
+
+    var hood = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.30, 9, 1, true), robeMat);
+    hood.position.set(0, 1.80, -0.03);
+    hood.rotation.x = Math.PI;
+    player.add(hood);
+
+    function arm(side) {
+      var g = new THREE.Group();
+      var upper = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.42, 6), robeMat);
+      upper.position.y = -0.21;
+      g.add(upper);
+      var hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), skinMat);
+      hand.position.y = -0.44;
+      g.add(hand);
+      g.position.set(side * 0.34, 1.44, 0.02);
+      g.rotation.z = side * -0.18;
+      g.rotation.x = 0.35;
+      return g;
+    }
+    var armL = arm(-1);
+    var armR = arm(1);
+    player.add(armL, armR);
+
+    var handWand = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.026, 0.5, 6),
+      new THREE.MeshLambertMaterial({ color: 0x4a3826, emissive: 0x140d06 }));
+    handWand.position.set(0, -0.62, 0.05);
+    handWand.rotation.x = 0.5;
+    armR.add(handWand);
+  })();
+  player.visible = false;
+  scene.add(player);
+
   var lumosCaptionTimer = null;
   lumos.onPhase = function (state) {
     var text = state === 'off' ? 'Nox.' : (state === 'maxima' ? 'Lumos Maxima!' : 'Lumos!');
@@ -92,10 +160,33 @@
     camera.getWorldDirection(campose.dir);
     return campose;
   }
+
   leviosa.getCameraPose = getCameraPose;
   incendio.getCameraPose = getCameraPose;
   accio.getCameraPose = getCameraPose;
   bombarda.getCameraPose = getCameraPose;
+
+  /* ---------- perspective (first-person / third-person) ---------- */
+
+  var viewMode = 'first'; // 'first' | 'third'
+
+  var wandHiddenByPatronus = false;
+  function updateWandVisibility() {
+    wand.visible = viewMode === 'first' && !wandHiddenByPatronus;
+  }
+
+  var viewCaptionTimer = null;
+  function toggleView() {
+    beginWalking();
+    viewMode = viewMode === 'first' ? 'third' : 'first';
+    player.visible = viewMode === 'third';
+    updateWandVisibility();
+    UI.setViewMode(viewMode);
+    AudioSys.init();
+    UI.caption(viewMode === 'third' ? 'Third-person view' : 'First-person view');
+    clearTimeout(viewCaptionTimer);
+    viewCaptionTimer = setTimeout(function () { UI.caption(null); }, 1200);
+  }
 
   var leviosaCaptionTimer = null;
   leviosa.onPhase = function (state) {
@@ -217,6 +308,9 @@
       if (walk.grounded) { walk.vel = JUMP_V; walk.grounded = false; }
     } else if (ev.code === 'KeyW' || ev.code === 'KeyA' || ev.code === 'KeyS' || ev.code === 'KeyD') {
       beginWalking();
+    } else if (ev.code === 'KeyC') {
+      beginWalking();
+      toggleView();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -238,11 +332,18 @@
     walk.pitch = Math.max(-lim, Math.min(lim, walk.pitch));
   });
 
+  var THIRD_DIST = 4.4, THIRD_LIFT = 0.35, THIRD_PIVOT_H = EYE_H * 0.92;
   var walkFwd = new THREE.Vector3(), walkRight = new THREE.Vector3(), walkMove = new THREE.Vector3();
+  var thirdForward = new THREE.Vector3(), thirdPivot = new THREE.Vector3();
   function updateWalker(dt) {
+    // Always derive the look direction from the actual camera (same technique
+    // the original first-person controls used) so movement direction is
+    // identical in both view modes and can't drift from how the camera
+    // itself computes "forward".
     camera.rotation.order = 'YXZ';
     camera.rotation.set(walk.pitch, walk.yaw, 0);
-    camera.getWorldDirection(walkFwd);
+    camera.getWorldDirection(thirdForward); // full (non-flattened) look direction, reused below for third-person
+    walkFwd.copy(thirdForward);
     walkFwd.y = 0; walkFwd.normalize();
     walkRight.set(-walkFwd.z, 0, walkFwd.x);
 
@@ -263,7 +364,19 @@
     var r = Math.hypot(walk.pos.x, walk.pos.z);
     if (r > WALK_RADIUS) { var k = WALK_RADIUS / r; walk.pos.x *= k; walk.pos.z *= k; }
 
-    camera.position.copy(walk.pos);
+    if (viewMode === 'third') {
+      // Character stands where the player is; camera orbits behind/above it
+      // on the same yaw/pitch the mouse controls, always looking at the player.
+      player.position.set(walk.pos.x, walk.pos.y - EYE_H, walk.pos.z);
+      player.rotation.y = walk.yaw + Math.PI;
+      thirdPivot.set(player.position.x, player.position.y + THIRD_PIVOT_H, player.position.z);
+      camera.position.copy(thirdPivot).addScaledVector(thirdForward, -THIRD_DIST);
+      camera.position.y += THIRD_LIFT;
+      camera.lookAt(thirdPivot);
+    } else {
+      // camera.rotation is already set correctly above; just place it at eye level.
+      camera.position.copy(walk.pos);
+    }
   }
 
   function updateCamera(t, dt) {
@@ -320,12 +433,14 @@
       UI.caption('The ' + UI.selectedAnimal().name + ' answers your call');
     } else if (name === 'run') {
       UI.caption(null);
-      wand.visible = false;
+      wandHiddenByPatronus = true;
+      updateWandVisibility();
     } else if (name === 'fade') {
       UI.caption('The light lingers, then lets go…');
     } else if (name === 'done') {
       UI.caption(null);
-      wand.visible = true;
+      wandHiddenByPatronus = false;
+      updateWandVisibility();
       UI.setCasting(false);
     }
   };
@@ -375,8 +490,10 @@
     },
     onCapture: capture,
     onWeather: applyWeather,
-    onMute: function (m) { AudioSys.setMuted(m); }
+    onMute: function (m) { AudioSys.setMuted(m); },
+    onViewToggle: toggleView
   });
+  UI.setViewMode(viewMode);
 
   /* ---------- resize ---------- */
 
