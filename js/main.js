@@ -334,6 +334,11 @@
     } else if (ev.code === 'KeyC') {
       beginWalking();
       toggleView();
+    } else if (ev.code === 'KeyF') {
+      // Avada Kedavra needs to work while walking (pointer-locked), where
+      // the mouse can't reach the spell menu — so it gets its own key.
+      AudioSys.init();
+      avada.cast();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });

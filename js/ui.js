@@ -217,12 +217,18 @@
     return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
   }
 
-  // "Avada Kedavra" — both words are distinctive enough that just requiring
-  // each somewhere in the phrase (in either order) is plenty forgiving.
+  // "Avada Kedavra" — same forgiving treatment as Expecto Patronum: accept
+  // common mishearings of each word (regex sound-shape first, then the
+  // fuzzy edit-distance fallback), and require both words present but not
+  // necessarily in order, so a mangled ASR result still casts the curse.
   var AVADA_RE = /\bavada\b/i;
-  var KEDAVRA_RE = /\bk[ae]davr[ae]\b/i;
+  var KEDAVRA_RE = /\bk[ae]d[ae]?vr?[ae]\b/i;
+  var AVADA_TARGETS = ['avada', 'avara', 'avadah', 'abada'];
+  var KEDAVRA_TARGETS = ['kedavra', 'kedavera', 'kadavra', 'kadabra', 'cadabra', 'kedabra', 'kadavera'];
   function isAvadaPhrase(text) {
-    return AVADA_RE.test(text) && KEDAVRA_RE.test(text);
+    var hasAvada = AVADA_RE.test(text) || phraseHasFuzzyWord(text, AVADA_TARGETS);
+    var hasKedavra = KEDAVRA_RE.test(text) || phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
+    return hasAvada && hasKedavra;
   }
 
   function tryIncantation(text) {

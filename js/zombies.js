@@ -189,15 +189,23 @@
     }
 
     // Instantly kills the nearest living zombie to `fromPos` (within
-    // `maxRange`, default unlimited) — used by Avada Kedavra. Returns the
-    // kill spot (torso height) for the beam to aim at, or null if none found.
-    Z.killNearest = function (fromPos, maxRange) {
+    // `maxRange`, default unlimited) — used by Avada Kedavra. If `facing` is
+    // given, zombies behind that direction (roughly outside a forward cone)
+    // are ignored, so the curse can't snipe something behind the player.
+    var tmpToTarget = new THREE.Vector3();
+    Z.killNearest = function (fromPos, maxRange, facing) {
       var range = maxRange || Infinity, best = null, bestD = Infinity;
       for (var i = 0; i < list.length; i++) {
         var z = list[i];
         if (!z.alive) continue;
-        var d = z.pos.distanceTo(fromPos);
-        if (d <= range && d < bestD) { bestD = d; best = z; }
+        tmpToTarget.subVectors(z.pos, fromPos);
+        var d = tmpToTarget.length();
+        if (d > range) continue;
+        if (facing && d > 0.01) {
+          tmpToTarget.multiplyScalar(1 / d);
+          if (tmpToTarget.dot(facing) < 0.35) continue; // behind / far off to the side
+        }
+        if (d < bestD) { bestD = d; best = z; }
       }
       if (!best) return null;
       var spot = best.pos.clone();

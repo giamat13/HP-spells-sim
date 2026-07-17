@@ -41,7 +41,8 @@
 
     A.cast = function () {
       // No lock: casting again just re-aims and re-fires immediately.
-      var target = zombies.killNearest(A.getCameraPose().pos, RANGE);
+      var pose = A.getCameraPose();
+      var target = zombies.killNearest(pose.pos, RANGE, pose.dir);
       if (!target) { A.onPhase('none'); return false; }
 
       from.copy(A.getWandTip());
