@@ -31,7 +31,7 @@
   <aside id="spell-menu" class="ui-panel">
     <h3 class="panel-title">Spellbook</h3>
     <ul id="spell-list">
-      <li class="spell active" data-spell="patronus">
+      <li class="spell active" data-spell="patronus" id="spell-patronus" tabindex="0">
         <span class="spell-name">Expecto Patronum</span>
         <span class="spell-kind">The Patronus Charm</span>
       </li>
@@ -51,15 +51,24 @@
     <button id="menu-toggle" class="icon-btn" title="Menu">☰</button>
   </div>
 
-  <!-- Bottom: patronus picker + cast bar -->
+  <!-- Bottom: cast bar (Patronus choice lives in its own settings modal) -->
   <div id="cast-ui">
     <p id="hint">Choose your Patronus, then speak the words.</p>
-    <div id="animal-cards"></div>
     <div id="cast-bar">
+      <button id="animal-btn" class="icon-btn" title="Choose your Patronus"></button>
       <input id="incantation" type="text" autocomplete="off" spellcheck="false"
              placeholder='Type “Expecto Patronum”…'>
       <button id="mic-btn" class="icon-btn" title="Speak the incantation" hidden>🎙</button>
       <button id="cast-btn" class="gold-btn">⚡ Cast</button>
+    </div>
+  </div>
+
+  <!-- Patronus picker modal -->
+  <div id="animal-modal" class="modal" hidden>
+    <div class="modal-card wide">
+      <h3 class="panel-title">Choose Your Patronus</h3>
+      <div id="animal-cards"></div>
+      <button id="animal-modal-close" class="gold-btn">Done</button>
     </div>
   </div>
 
@@ -83,7 +92,7 @@
   <div id="caption" hidden></div>
 
   <!-- Walking hint -->
-  <div id="move-hint">WASD to walk · Space to jump · click to look around</div>
+  <div id="move-hint">WASD to walk · Space to jump · click to look around · Enter to cast</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="js/animals.js"></script>

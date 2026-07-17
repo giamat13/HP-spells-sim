@@ -46,7 +46,10 @@
         wrap.querySelectorAll('.fav').forEach(function (s) { s.classList.remove('on'); });
         if (newFav) star.classList.add('on');
       });
-      card.addEventListener('click', function () { select(a.id); });
+      card.addEventListener('click', function () {
+        select(a.id);
+        closeAnimalModal();
+      });
       wrap.appendChild(card);
     });
   }
@@ -58,7 +61,16 @@
     });
     els.hint.textContent = 'Your Patronus: the ' + selected.name +
       '. Speak the words, or press Cast.';
+    els.animalBtn.innerHTML = '';
+    els.animalBtn.appendChild(ANIMALS.makeIcon(selected, 40, 30, 'rgba(178,216,255,0.95)'));
+    var label = document.createElement('span');
+    label.className = 'animal-btn-label';
+    label.textContent = selected.name;
+    els.animalBtn.appendChild(label);
   }
+
+  function openAnimalModal() { els.animalModal.hidden = false; }
+  function closeAnimalModal() { els.animalModal.hidden = true; }
 
   function tryIncantation(text) {
     if (/expecto\s*patronum/i.test(text)) { doCast(); return true; }
@@ -70,42 +82,59 @@
     if (hooks.onCast) hooks.onCast(selected);
   }
 
-  /* ---------- voice ---------- */
+  /* ---------- voice: always-on, self-restarting incantation listener ---------- */
+
+  var mic = { supported: false, active: false, wantOn: false };
+
+  function micStartRecognition() {
+    if (!mic.supported || mic.active) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var rec = new SR();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = function (ev) {
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        if (!ev.results[i].isFinal) continue;
+        var heard = ev.results[i][0].transcript;
+        if (/expecto/i.test(heard) && /patro/i.test(heard)) doCast();
+      }
+    };
+    rec.onend = function () {
+      mic.active = false;
+      els.mic.classList.remove('listening');
+      if (mic.wantOn) setTimeout(micStartRecognition, 400);
+    };
+    rec.onerror = function (ev) {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        mic.wantOn = false;
+        els.mic.title = 'Microphone access denied';
+      }
+      // other errors (no-speech, aborted, network) just fall through to onend and retry
+    };
+    try {
+      rec.start();
+      mic.active = true;
+      els.mic.classList.add('listening');
+    } catch (e) {}
+  }
 
   function setupVoice() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
+    mic.supported = true;
     els.mic.hidden = false;
-    var rec = null, listening = false;
+    els.mic.title = 'Always listening for “Expecto Patronum”';
     els.mic.addEventListener('click', function () {
-      if (listening) { try { rec.stop(); } catch (e) {} return; }
-      rec = new SR();
-      rec.lang = 'en-US';
-      rec.interimResults = false;
-      rec.maxAlternatives = 3;
-      rec.onresult = function (ev) {
-        var heard = '';
-        for (var i = 0; i < ev.results[0].length; i++) {
-          heard += ' ' + ev.results[0][i].transcript;
-        }
-        if (/expecto/i.test(heard) && /patro/i.test(heard)) doCast();
-        else {
-          els.hint.textContent = 'The forest heard: “' + ev.results[0][0].transcript +
-            '”. Try again: Expecto Patronum.';
-        }
-      };
-      rec.onend = function () {
-        listening = false;
-        els.mic.classList.remove('listening');
-      };
-      rec.onerror = rec.onend;
-      try {
-        rec.start();
-        listening = true;
-        els.mic.classList.add('listening');
-        els.hint.textContent = 'Listening… say the words.';
-      } catch (e) {}
+      mic.wantOn = true;
+      micStartRecognition();
     });
+  }
+
+  function startVoice() {
+    if (!mic.supported) return;
+    mic.wantOn = true;
+    micStartRecognition();
   }
 
   /* ---------- pointer sparkles ---------- */
@@ -193,6 +222,8 @@
       els.journal = document.getElementById('journal');
       els.journalStats = document.getElementById('journal-stats');
       els.caption = document.getElementById('caption');
+      els.animalBtn = document.getElementById('animal-btn');
+      els.animalModal = document.getElementById('animal-modal');
 
       buildCards();
       var fav = store.get('fav', null);
@@ -218,6 +249,19 @@
           els.input.value = '';
         }
       });
+
+      els.animalBtn.addEventListener('click', openAnimalModal);
+      document.getElementById('animal-modal-close').addEventListener('click', closeAnimalModal);
+      els.animalModal.addEventListener('click', function (ev) {
+        if (ev.target === els.animalModal) closeAnimalModal();
+      });
+      var spellPatronus = document.getElementById('spell-patronus');
+      if (spellPatronus) {
+        spellPatronus.addEventListener('click', openAnimalModal);
+        spellPatronus.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openAnimalModal(); }
+        });
+      }
 
       document.getElementById('journal-btn').addEventListener('click', openJournal);
       document.getElementById('journal-close').addEventListener('click', function () {
@@ -307,6 +351,7 @@
       });
     },
 
-    update: updateSparkles
+    update: updateSparkles,
+    startVoice: startVoice
   };
 })();

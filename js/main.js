@@ -128,6 +128,9 @@
       if (walk.grounded) { walk.vel = JUMP_V; walk.grounded = false; }
     } else if (ev.code === 'KeyW' || ev.code === 'KeyA' || ev.code === 'KeyS' || ev.code === 'KeyD') {
       beginWalking();
+    } else if (ev.code === 'Enter') {
+      // the mouse is busy steering the view while walking, so Enter casts instead
+      document.getElementById('cast-btn').click();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -259,6 +262,7 @@
     onStart: function () {
       AudioSys.init();
       AudioSys.setMuted(UI.isMuted());
+      UI.startVoice();
     },
     onCast: function (animal) {
       AudioSys.init();
