@@ -169,11 +169,10 @@ html, body {
 .spell + .spell { margin-top: 0.2rem; }
 .spell-name { display: block; font-size: 0.98rem; letter-spacing: 0.05em; }
 .spell-kind { display: block; font-size: 0.72rem; color: var(--ink-dim); font-style: italic; margin-top: 0.1rem; }
-.spell.active {
-  border-left-color: var(--glow);
-  background: rgba(159, 216, 255, 0.07);
+.spell:not(.locked):hover {
+  border-left-color: var(--gold-dim);
+  background: rgba(201, 163, 78, 0.06);
 }
-.spell.active .spell-name { color: var(--glow); text-shadow: 0 0 12px rgba(159, 216, 255, 0.5); }
 .spell.locked { opacity: 0.45; cursor: default; }
 #journal-btn { margin-top: 0.9rem; }
 

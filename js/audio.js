@@ -268,6 +268,26 @@
     };
   }
 
+  // Lumos: a small bright ping kindling; Nox: the same tone falling and fading.
+  function lumosToggle(on) {
+    var t = now();
+    pluck(on ? 86 : 74, t, 0.3);
+    var o = ctx.createOscillator();
+    o.type = 'sine';
+    if (on) {
+      o.frequency.setValueAtTime(700, t);
+      o.frequency.exponentialRampToValueAtTime(1500, t + 0.15);
+    } else {
+      o.frequency.setValueAtTime(500, t);
+      o.frequency.exponentialRampToValueAtTime(160, t + 0.35);
+    }
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    o.connect(g); out(g, 0.7, 0.4);
+    o.start(t); o.stop(t + 0.42);
+  }
+
   // Bright chord when the animal takes shape.
   function formationChime() {
     var t = now();
@@ -426,6 +446,7 @@
       return buildup(d);
     },
     formationChime: function () { if (ctx && !muted) formationChime(); },
+    lumosToggle: function (on) { if (ctx && !muted) lumosToggle(on); },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);

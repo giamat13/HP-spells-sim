@@ -31,11 +31,14 @@
   <aside id="spell-menu" class="ui-panel">
     <h3 class="panel-title">Spellbook</h3>
     <ul id="spell-list">
-      <li class="spell active" data-spell="patronus" id="spell-patronus" tabindex="0">
+      <li class="spell" data-spell="patronus" id="spell-patronus" tabindex="0">
         <span class="spell-name">Expecto Patronum</span>
         <span class="spell-kind">The Patronus Charm</span>
       </li>
-      <li class="spell locked"><span class="spell-name">Lumos</span><span class="spell-kind">Coming soon 🔒</span></li>
+      <li class="spell" data-spell="lumos" id="spell-lumos" tabindex="0">
+        <span class="spell-name">Lumos</span>
+        <span class="spell-kind">The Wand-Lighting Charm</span>
+      </li>
       <li class="spell locked"><span class="spell-name">Expelliarmus</span><span class="spell-kind">Coming soon 🔒</span></li>
       <li class="spell locked"><span class="spell-name">Wingardium Leviosa</span><span class="spell-kind">Coming soon 🔒</span></li>
       <li class="spell locked"><span class="spell-name">Riddikulus</span><span class="spell-kind">Coming soon 🔒</span></li>
@@ -79,7 +82,6 @@
       <div id="journal-stats"></div>
       <h4 class="journal-sub">Pages yet unwritten</h4>
       <ul class="journal-locked">
-        <li>Lumos: a light in the palm of your hand 🔒</li>
         <li>Expelliarmus: the disarming charm 🔒</li>
         <li>Wingardium Leviosa: the levitation charm 🔒</li>
         <li>Riddikulus: laughter against fear 🔒</li>
@@ -92,13 +94,14 @@
   <div id="caption" hidden></div>
 
   <!-- Walking hint -->
-  <div id="move-hint">WASD to walk · Space to jump · click to look around · Enter to cast</div>
+  <div id="move-hint">WASD to walk · Space to jump · click to look around</div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="js/animals.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/forest.js"></script>
   <script src="js/patronus.js"></script>
+  <script src="js/lumos.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>

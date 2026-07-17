@@ -72,14 +72,29 @@
   function openAnimalModal() { els.animalModal.hidden = false; }
   function closeAnimalModal() { els.animalModal.hidden = true; }
 
-  function tryIncantation(text) {
-    if (/expecto\s*patronum/i.test(text)) { doCast(); return true; }
-    return false;
+  function castPatronus() {
+    if (casting || !selected) return;
+    if (hooks.onCast) hooks.onCast('patronus', selected);
   }
 
-  function doCast() {
-    if (casting || !selected) return;
-    if (hooks.onCast) hooks.onCast(selected);
+  function castLumosOn() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('lumos', true);
+  }
+  function castLumosOff() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('lumos', false);
+  }
+  function toggleLumos() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('lumos', 'toggle');
+  }
+
+  function tryIncantation(text) {
+    if (/expecto\s*patronum/i.test(text)) { castPatronus(); return true; }
+    if (/^\s*nox\b/i.test(text)) { castLumosOff(); return true; }
+    if (/^\s*lumos\b/i.test(text)) { castLumosOn(); return true; }
+    return false;
   }
 
   /* ---------- voice: always-on, self-restarting incantation listener ---------- */
@@ -97,7 +112,9 @@
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
-        if (/expecto/i.test(heard) && /patro/i.test(heard)) doCast();
+        if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
+        else if (/\bnox\b/i.test(heard)) castLumosOff();
+        else if (/lumos/i.test(heard)) castLumosOn();
       }
     };
     rec.onend = function () {
@@ -124,7 +141,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, or “Nox”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -237,14 +254,14 @@
         if (hooks.onStart) hooks.onStart();
       });
 
-      document.getElementById('cast-btn').addEventListener('click', doCast);
+      document.getElementById('cast-btn').addEventListener('click', castPatronus);
       els.input.addEventListener('keydown', function (ev) {
         if (ev.key !== 'Enter') return;
         if (!tryIncantation(els.input.value)) {
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, or “Nox”.';
         } else {
           els.input.value = '';
         }
@@ -260,6 +277,13 @@
         spellPatronus.addEventListener('click', openAnimalModal);
         spellPatronus.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openAnimalModal(); }
+        });
+      }
+      var spellLumos = document.getElementById('spell-lumos');
+      if (spellLumos) {
+        spellLumos.addEventListener('click', toggleLumos);
+        spellLumos.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleLumos(); }
         });
       }
 

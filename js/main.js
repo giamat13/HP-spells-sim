@@ -37,6 +37,7 @@
 
   var forest = Forest.build(scene, Q);
   var patronus = Patronus.create(scene, Q);
+  var lumos = Lumos.create(scene);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -65,9 +66,19 @@
   scene.add(camera);
 
   var tipWorld = new THREE.Vector3();
-  patronus.getWandTip = function () {
+  function getWandTip() {
     wandTip.getWorldPosition(tipWorld);
     return tipWorld;
+  }
+  patronus.getWandTip = getWandTip;
+  lumos.getWandTip = getWandTip;
+
+  var lumosCaptionTimer = null;
+  lumos.onPhase = function (state) {
+    UI.caption(state === 'on' ? 'Lumos!' : 'Nox.');
+    AudioSys.lumosToggle(state === 'on');
+    clearTimeout(lumosCaptionTimer);
+    lumosCaptionTimer = setTimeout(function () { UI.caption(null); }, 1300);
   };
 
   /* ---------- environment mood ---------- */
@@ -75,6 +86,7 @@
   var baseFog = new THREE.Color(0x0a121e);
   var dementorFog = new THREE.Color(0x04060a);
   var patronusFog = new THREE.Color(0x16283f);
+  var lumosFog = new THREE.Color(0x3a2f1c);
   var fogTmp = new THREE.Color();
   var dementorOn = false;
 
@@ -128,9 +140,6 @@
       if (walk.grounded) { walk.vel = JUMP_V; walk.grounded = false; }
     } else if (ev.code === 'KeyW' || ev.code === 'KeyA' || ev.code === 'KeyS' || ev.code === 'KeyD') {
       beginWalking();
-    } else if (ev.code === 'Enter') {
-      // the mouse is busy steering the view while walking, so Enter casts instead
-      document.getElementById('cast-btn').click();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -264,11 +273,15 @@
       AudioSys.setMuted(UI.isMuted());
       UI.startVoice();
     },
-    onCast: function (animal) {
+    onCast: function (spellId, payload) {
       AudioSys.init();
-      if (patronus.cast(animal)) {
-        UI.setCasting(true);
-        UI.recordCast(animal.id);
+      if (spellId === 'patronus') {
+        if (patronus.cast(payload)) {
+          UI.setCasting(true);
+          UI.recordCast(payload.id);
+        }
+      } else if (spellId === 'lumos') {
+        lumos.set(payload);
       }
     },
     onCapture: capture,
@@ -289,7 +302,7 @@
   var clock = new THREE.Clock();
 
   // small handle for testing/tinkering from the console
-  window.HP = { patronus: patronus, forest: forest, quality: Q, isMobile: isMobile };
+  window.HP = { patronus: patronus, lumos: lumos, forest: forest, quality: Q, isMobile: isMobile };
 
   function frame() {
     requestAnimationFrame(frame);
@@ -298,16 +311,21 @@
 
     forest.update(t, dt);
     patronus.update(t, dt);
+    lumos.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 
-    // mood: patronus light tints the fog; dementor weather darkens all
+    // mood: patronus and lumos light tint the fog and lift the ambient level;
+    // dementor weather darkens all of it
     var glow = patronus.intensity;
-    fogTmp.copy(dementorOn ? dementorFog : baseFog).lerp(patronusFog, glow * 0.8);
+    var lglow = lumos.intensity;
+    fogTmp.copy(dementorOn ? dementorFog : baseFog)
+      .lerp(patronusFog, glow * 0.8)
+      .lerp(lumosFog, lglow * 0.55);
     scene.fog.color.copy(fogTmp);
-    scene.fog.density += ((dementorOn ? 0.036 : 0.024) - scene.fog.density) * dt * 0.8;
+    scene.fog.density += ((dementorOn ? 0.036 : 0.024) - lglow * 0.007 - scene.fog.density) * dt * 0.8;
     forest.moonLight.intensity += ((dementorOn ? 0.6 : 1.25) - forest.moonLight.intensity) * dt * 0.8;
-    forest.hemi.intensity = (dementorOn ? 0.45 : 0.75) + glow * 0.25;
+    forest.hemi.intensity = (dementorOn ? 0.45 : 0.75) + glow * 0.25 + lglow * 0.4;
 
     // wand tip glow while charging
     var ph = patronus.phase;
