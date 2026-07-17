@@ -1,1 +1,15 @@
 .playwright-mcp/
+
+# Node / Electron
+node_modules/
+dist/
+out/
+package-lock.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
