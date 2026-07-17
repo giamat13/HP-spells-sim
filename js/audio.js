@@ -290,6 +290,36 @@
     o.start(t); o.stop(t + (big ? 0.6 : 0.42));
   }
 
+  // Wingardium Leviosa: a rising swell as the object lifts off the ground.
+  function leviosaRise() {
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(220, t);
+    o.frequency.exponentialRampToValueAtTime(440, t + 0.6);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 1.0);
+    o.connect(g); out(g, 0.6, 0.55);
+    o.start(t); o.stop(t + 1.05);
+    pluck(79, t + 0.1, 0.3);
+  }
+
+  // The soft settling thud as the object touches down again.
+  function leviosaSettle() {
+    var t = now();
+    pluck(64, t, 0.35);
+    var n = noiseSource(false);
+    var lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 300;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    n.connect(lp); lp.connect(g); out(g, 0.7, 0.4);
+    n.start(t); n.stop(t + 0.32);
+  }
+
   // Bright chord when the animal takes shape.
   function formationChime() {
     var t = now();
@@ -449,6 +479,8 @@
     },
     formationChime: function () { if (ctx && !muted) formationChime(); },
     lumosToggle: function (on, big) { if (ctx && !muted) lumosToggle(on, big); },
+    leviosaRise: function () { if (ctx && !muted) leviosaRise(); },
+    leviosaSettle: function () { if (ctx && !muted) leviosaSettle(); },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);

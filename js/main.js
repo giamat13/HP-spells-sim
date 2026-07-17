@@ -10,14 +10,14 @@
   })();
 
   var Q = isMobile ? {
-    trees: 26, undergrowth: 40, rocks: 18, logs: 3, leaves: 120, mushrooms: 6,
+    trees: 26, undergrowth: 40, rocks: 18, logs: 3, leaves: 120, mushrooms: 6, flowers: 8,
     dust: 120, stars: 250, bats: 2, clouds: 4,
     shadows: true, shadowSize: 1024,
     patronusPoints: 1700, trailPoints: 900, trailRate: 3.5,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
     antialias: false
   } : {
-    trees: 60, undergrowth: 90, rocks: 40, logs: 6, leaves: 350, mushrooms: 12,
+    trees: 60, undergrowth: 90, rocks: 40, logs: 6, leaves: 350, mushrooms: 12, flowers: 18,
     dust: 350, stars: 500, bats: 4, clouds: 6,
     shadows: true, shadowSize: 2048,
     patronusPoints: 4500, trailPoints: 2400, trailRate: 7,
@@ -38,6 +38,7 @@
   var forest = Forest.build(scene, Q);
   var patronus = Patronus.create(scene, Q);
   var lumos = Lumos.create(scene);
+  var leviosa = Leviosa.create(scene, forest);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -80,6 +81,25 @@
     AudioSys.lumosToggle(state !== 'off', state === 'maxima');
     clearTimeout(lumosCaptionTimer);
     lumosCaptionTimer = setTimeout(function () { UI.caption(null); }, 1300);
+  };
+
+  var campose = { pos: new THREE.Vector3(), dir: new THREE.Vector3() };
+  leviosa.getCameraPose = function () {
+    campose.pos.copy(camera.position);
+    camera.getWorldDirection(campose.dir);
+    return campose;
+  };
+
+  var leviosaCaptionTimer = null;
+  leviosa.onPhase = function (state) {
+    var text = null, life = 1600;
+    if (state === 'rise') { text = 'Wingardium Leviosa!'; AudioSys.leviosaRise(); }
+    else if (state === 'hover') { text = 'Guide it with your mouse…'; life = 2200; }
+    else if (state === 'done') { AudioSys.leviosaSettle(); }
+    else if (state === 'none') { text = 'Nothing nearby to lift.'; }
+    UI.caption(text);
+    clearTimeout(leviosaCaptionTimer);
+    if (text) leviosaCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- environment mood ---------- */
@@ -154,6 +174,7 @@
   });
   document.addEventListener('mousemove', function (ev) {
     if (!walk.locked) return;
+    if (leviosa.phase === 'hover') { leviosa.nudge(ev.movementX, ev.movementY); return; }
     beginWalking();
     walk.yaw -= ev.movementX * 0.0022;
     walk.pitch -= ev.movementY * 0.0022;
@@ -283,6 +304,8 @@
         }
       } else if (spellId === 'lumos') {
         lumos.set(payload.on, payload.maxima);
+      } else if (spellId === 'leviosa') {
+        leviosa.cast();
       }
     },
     onCapture: capture,
@@ -303,7 +326,7 @@
   var clock = new THREE.Clock();
 
   // small handle for testing/tinkering from the console
-  window.HP = { patronus: patronus, lumos: lumos, forest: forest, quality: Q, isMobile: isMobile };
+  window.HP = { patronus: patronus, lumos: lumos, leviosa: leviosa, forest: forest, quality: Q, isMobile: isMobile };
 
   function frame() {
     requestAnimationFrame(frame);
@@ -313,6 +336,8 @@
     forest.update(t, dt);
     patronus.update(t, dt);
     lumos.update(t, dt);
+    if (!walk.locked) leviosa.setPointer(pointer.x, pointer.y);
+    leviosa.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 

@@ -1,5 +1,7 @@
 /* The dark forest: ground, trees, undergrowth, rocks, logs, moon, stars,
-   dust motes, bats, glowing mushrooms, dementor weather.
+   dust motes, bats, glowing mushrooms, flowers, dementor weather.
+   Also tracks liftable ground objects (rocks/shrubs/logs/mushrooms/flowers)
+   for Wingardium Leviosa via F.liftables + F.setLiftableTransform.
    Globals: Forest, makeGlowTexture */
 (function () {
   'use strict';
@@ -212,6 +214,7 @@
     scene.add(rocks);
 
     // Fallen logs
+    F.logs = [];
     for (i = 0; i < Q.logs; i++) {
       p = scatterPos(7, 45);
       var log = new THREE.Mesh(
@@ -222,6 +225,7 @@
       log.position.set(p.x, 0.28, p.z);
       log.castShadow = Q.shadows;
       scene.add(log);
+      F.logs.push(log);
     }
 
     // Scattered leaves (instanced flat quads)
@@ -245,6 +249,7 @@
     });
     var stemMat = new THREE.MeshLambertMaterial({ color: 0x2a3038 });
     F.shroomMat = shroomMat;
+    F.mushroomClusters = [];
     for (i = 0; i < Q.mushrooms; i++) {
       p = scatterPos(4, 40);
       var cluster = new THREE.Group();
@@ -259,7 +264,73 @@
       }
       cluster.position.set(p.x, 0, p.z);
       scene.add(cluster);
+      F.mushroomClusters.push(cluster);
     }
+
+    // Flowers — small bright blossoms scattered near the ground
+    var flowerStemMat = new THREE.MeshLambertMaterial({ color: 0x24361f });
+    var flowerColors = [0xff5577, 0xffd166, 0xff8c42, 0xc77dff, 0xf72585, 0xffffff];
+    F.flowerClusters = [];
+    for (i = 0; i < Q.flowers; i++) {
+      p = scatterPos(3, 35);
+      var flower = new THREE.Group();
+      var fcount = 1 + (Math.random() * 2 | 0);
+      for (var k = 0; k < fcount; k++) {
+        var fh = rand(0.18, 0.34);
+        var fstem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, fh, 5), flowerStemMat);
+        fstem.position.set(rand(-0.15, 0.15), fh / 2, rand(-0.15, 0.15));
+        var fcolor = flowerColors[(Math.random() * flowerColors.length) | 0];
+        var bloomMat = new THREE.MeshLambertMaterial({ color: fcolor, emissive: fcolor, emissiveIntensity: 0.12 });
+        var bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(fh * 0.32, 0), bloomMat);
+        bloom.position.set(fstem.position.x, fh, fstem.position.z);
+        flower.add(fstem, bloom);
+      }
+      flower.position.set(p.x, 0, p.z);
+      scene.add(flower);
+      F.flowerClusters.push(flower);
+    }
+
+    // Liftable objects for Wingardium Leviosa: rocks, shrubs, logs, mushrooms, flowers
+    F.liftables = [];
+    var liftM4 = new THREE.Matrix4(), liftPos = new THREE.Vector3(),
+        liftQuat = new THREE.Quaternion(), liftScl = new THREE.Vector3();
+    function addInstancedLiftables(mesh, count, label) {
+      for (var n = 0; n < count; n++) {
+        mesh.getMatrixAt(n, liftM4);
+        liftM4.decompose(liftPos, liftQuat, liftScl);
+        F.liftables.push({
+          kind: 'instanced', mesh: mesh, index: n, label: label,
+          basePos: liftPos.clone(), baseQuat: liftQuat.clone(), baseScale: liftScl.clone()
+        });
+      }
+    }
+    function addObjectLiftables(list, label) {
+      for (var n = 0; n < list.length; n++) {
+        var obj = list[n];
+        F.liftables.push({
+          kind: 'object', mesh: obj, label: label,
+          basePos: obj.position.clone(), baseQuat: obj.quaternion.clone(), baseScale: obj.scale.clone()
+        });
+      }
+    }
+    addInstancedLiftables(rocks, Q.rocks, 'rock');
+    addInstancedLiftables(bushes, Q.undergrowth, 'shrub');
+    addObjectLiftables(F.logs, 'fallen log');
+    addObjectLiftables(F.mushroomClusters, 'mushroom');
+    addObjectLiftables(F.flowerClusters, 'flower');
+
+    // Writes a liftable's current world transform back to its render representation
+    // (an InstancedMesh slot for rocks/shrubs, or the object's own transform otherwise).
+    F.setLiftableTransform = function (entry, pos, quat) {
+      if (entry.kind === 'instanced') {
+        liftM4.compose(pos, quat, entry.baseScale);
+        entry.mesh.setMatrixAt(entry.index, liftM4);
+        entry.mesh.instanceMatrix.needsUpdate = true;
+      } else {
+        entry.mesh.position.copy(pos);
+        entry.mesh.quaternion.copy(quat);
+      }
+    };
 
     // Dust motes drifting in the moonlight
     var dustGeo = new THREE.BufferGeometry();

@@ -94,14 +94,21 @@
     if (hooks.onCast) hooks.onCast('lumos', { on: 'toggle' });
   }
 
+  function castLeviosa() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('leviosa', null);
+  }
+
   // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
   // routinely mishears one for the other — accept the common variants.
   var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
   var LUMOS_MAXIMA_RE = /^\s*lumos\s*maxima\b/i;
   var LUMOS_RE = /^\s*lumos\b/i;
+  var LEVIOSA_RE = /wingardium\s*leviosa/i;
 
   function tryIncantation(text) {
     if (/expecto\s*patronum/i.test(text)) { castPatronus(); return true; }
+    if (LEVIOSA_RE.test(text)) { castLeviosa(); return true; }
     if (NOX_RE.test(text)) { castLumosOff(); return true; }
     if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
     if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
@@ -124,6 +131,7 @@
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
         if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
+        else if (/leviosa/i.test(heard) || (/wingardium/i.test(heard) && /levi/i.test(heard))) castLeviosa();
         else if (NOX_RE.test(heard)) castLumosOff();
         else if (/lumos/i.test(heard) && /maxim/i.test(heard)) castLumosMaxima();
         else if (/lumos/i.test(heard)) castLumosOn();
@@ -153,7 +161,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, or “Nox”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, or “Wingardium Leviosa”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -273,7 +281,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, or “Nox”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, or “Wingardium Leviosa”.';
         } else {
           els.input.value = '';
         }
@@ -296,6 +304,13 @@
         spellLumos.addEventListener('click', toggleLumos);
         spellLumos.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleLumos(); }
+        });
+      }
+      var spellLeviosa = document.getElementById('spell-leviosa');
+      if (spellLeviosa) {
+        spellLeviosa.addEventListener('click', castLeviosa);
+        spellLeviosa.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castLeviosa(); }
         });
       }
 
