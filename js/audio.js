@@ -440,6 +440,16 @@
     }
   }
 
+  /* ---------- one-off recorded clips (not synthesized) ---------- */
+
+  var leviosaMeme = null;
+  function playLeviosaMeme() {
+    if (!leviosaMeme) leviosaMeme = new Audio('sounds/its_leviosa.mp3');
+    leviosaMeme.currentTime = 0;
+    leviosaMeme.volume = 0.9;
+    leviosaMeme.play().catch(function () {});
+  }
+
   /* ---------- public ---------- */
 
   window.AudioSys = {
@@ -481,6 +491,7 @@
     lumosToggle: function (on, big) { if (ctx && !muted) lumosToggle(on, big); },
     leviosaRise: function () { if (ctx && !muted) leviosaRise(); },
     leviosaSettle: function () { if (ctx && !muted) leviosaSettle(); },
+    playLeviosaMeme: function () { if (!muted) playLeviosaMeme(); },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);

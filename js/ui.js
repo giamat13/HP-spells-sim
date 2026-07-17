@@ -99,16 +99,33 @@
     if (hooks.onCast) hooks.onCast('leviosa', null);
   }
 
+  // "It's LeviOsa, not LevioSAH" — the meme mispronunciation, drawn out with
+  // extra trailing A's. Still casts the spell, just also plays the clip.
+  function castLeviosaMeme() {
+    AudioSys.playLeviosaMeme();
+    castLeviosa();
+  }
+
   // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
   // routinely mishears one for the other — accept the common variants.
   var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
   var LUMOS_MAXIMA_RE = /^\s*lumos\s*maxima\b/i;
   var LUMOS_RE = /^\s*lumos\b/i;
-  var LEVIOSA_RE = /wingardium\s*leviosa/i;
+  var LEVIOSA_MEME_RE = /levios+a{3,}/i;
+
+  // "Wingardium Leviosa" is long and invented, so ASR mangles it constantly.
+  // "Leviosa" alone is distinctive enough to accept on its own (with common
+  // misspellings/mishears); "Wingardium"-ish + any "levi" fragment also counts.
+  var LEVIOSA_WORD_RE = /\b(leviosa|leviosah|leviosaa|leviosar|libiosa)\b/i;
+  var WINGARDIUM_RE = /\b([wv]ingardium|[wv]ingardian|[wv]ing\s*guardian|when\s*guardian|[wv]ing\s*gardenia)\b/i;
+  function isLeviosaPhrase(text) {
+    return LEVIOSA_WORD_RE.test(text) || (WINGARDIUM_RE.test(text) && /levi/i.test(text));
+  }
 
   function tryIncantation(text) {
     if (/expecto\s*patronum/i.test(text)) { castPatronus(); return true; }
-    if (LEVIOSA_RE.test(text)) { castLeviosa(); return true; }
+    if (LEVIOSA_MEME_RE.test(text)) { castLeviosaMeme(); return true; }
+    if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
     if (NOX_RE.test(text)) { castLumosOff(); return true; }
     if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
     if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
@@ -119,6 +136,17 @@
 
   var mic = { supported: false, active: false, wantOn: false };
 
+  // Speech recognition normalizes whatever you say into a proper dictionary
+  // word — it will never transcribe a drawn-out "leviosaaaa" as literal
+  // repeated letters, so the meme can't be caught from the transcript text
+  // the way it can from typed input. Instead we time the utterance itself
+  // (onspeechstart -> final result): a theatrically drawn-out "leviosaaaa"
+  // takes noticeably longer to say than a normal "leviosa".
+  // ponytail: fixed threshold, not adaptive to mic sensitivity/speech rate —
+  // revisit with per-user calibration if this ever misfires a lot.
+  var MEME_SPOKEN_MS = 1450;
+  var utterStartT = 0;
+
   function micStartRecognition() {
     if (!mic.supported || mic.active) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -126,12 +154,18 @@
     rec.lang = 'en-US';
     rec.continuous = true;
     rec.interimResults = false;
+    rec.onspeechstart = function () { utterStartT = performance.now(); };
     rec.onresult = function (ev) {
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
+        var spokenMs = utterStartT ? (performance.now() - utterStartT) : 0;
+        utterStartT = 0;
         if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
-        else if (/leviosa/i.test(heard) || (/wingardium/i.test(heard) && /levi/i.test(heard))) castLeviosa();
+        else if (LEVIOSA_MEME_RE.test(heard)) castLeviosaMeme();
+        else if (isLeviosaPhrase(heard)) {
+          if (spokenMs > MEME_SPOKEN_MS) castLeviosaMeme(); else castLeviosa();
+        }
         else if (NOX_RE.test(heard)) castLumosOff();
         else if (/lumos/i.test(heard) && /maxim/i.test(heard)) castLumosMaxima();
         else if (/lumos/i.test(heard)) castLumosOn();
