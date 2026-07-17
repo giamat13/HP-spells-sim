@@ -76,8 +76,8 @@
       // fire reads as a body of flame from any viewing angle instead of a
       // single flat billboard
       flm.userData.core = (i === 0);
-      flm.userData.side = flm.userData.core ? 0 : (i - (FLAME_COUNT - 1) / 2) * 0.075;
-      flm.userData.forward = flm.userData.core ? 0 : ((i % 2) * 2 - 1) * 0.06;
+      flm.userData.side = flm.userData.core ? 0 : (i - (FLAME_COUNT - 1) / 2) * 0.16;
+      flm.userData.forward = flm.userData.core ? 0 : ((i % 2) * 2 - 1) * 0.13;
       flm.visible = false;
       scene.add(flm);
       flames.push(flm);
@@ -96,7 +96,7 @@
       smokes.push(sp);
     }
 
-    var fireLight = new THREE.PointLight(0xff8a3d, 0, 9, 2);
+    var fireLight = new THREE.PointLight(0xff8a3d, 0, 14, 2);
     scene.add(fireLight);
 
     var I = {
@@ -181,23 +181,23 @@
       height = height * height * (3 - 2 * height);
 
       var flicker = 1 + Math.sin(t * 11.5) * 0.14 + Math.sin(t * 27) * 0.07;
-      fireLight.position.set(basePos.x, basePos.y + 0.32, basePos.z);
-      fireLight.intensity = 2.4 * height * flicker;
+      fireLight.position.set(basePos.x, basePos.y + 0.5, basePos.z);
+      fireLight.intensity = 4.2 * height * flicker;
 
       for (var fi = 0; fi < flames.length; fi++) {
         var flm = flames[fi];
         var seed = flm.userData.seed;
         var jitter = 0.85 + 0.15 * Math.sin(t * 9 + seed * 3) + 0.08 * Math.sin(t * 23 + seed);
-        var rise = flm.userData.core ? 0.62 : 0.42;
-        var wobbleX = flm.userData.side + Math.sin(t * 2.1 + seed) * 0.035;
-        var wobbleZ = flm.userData.forward + Math.cos(t * 1.7 + seed) * 0.035;
+        var rise = flm.userData.core ? 0.95 : 0.62;
+        var wobbleX = flm.userData.side + Math.sin(t * 2.1 + seed) * 0.06;
+        var wobbleZ = flm.userData.forward + Math.cos(t * 1.7 + seed) * 0.06;
         flm.position.set(
           basePos.x + wobbleX,
           basePos.y + rise * jitter * height * 0.5 + 0.05,
           basePos.z + wobbleZ
         );
-        var baseW = flm.userData.core ? 0.62 : 0.38;
-        var baseH = flm.userData.core ? 1.0 : 0.66;
+        var baseW = flm.userData.core ? 1.15 : 0.72;
+        var baseH = flm.userData.core ? 1.9 : 1.25;
         var sc = height * jitter;
         flm.scale.set(baseW * sc, baseH * sc, 1);
         flm.material.rotation = Math.sin(t * 1.4 + seed) * 0.12;
@@ -207,10 +207,10 @@
 
       for (var i = 0; i < EMBER_COUNT; i++) {
         var a = eSeed[i] + t * 1.4;
-        var r = 0.12 + 0.22 * ((eSeed[i] * 37) % 1);
+        var r = 0.18 + 0.32 * ((eSeed[i] * 37) % 1);
         var rise = ((t * (0.6 + (eSeed[i] * 13 % 1) * 0.8) + eSeed[i]) % 1.3);
         ePos[i * 3] = basePos.x + Math.cos(a) * r * (1 - rise * 0.4);
-        ePos[i * 3 + 1] = basePos.y + 0.05 + rise * 1.1;
+        ePos[i * 3 + 1] = basePos.y + 0.05 + rise * 1.6;
         ePos[i * 3 + 2] = basePos.z + Math.sin(a) * r * (1 - rise * 0.4);
         var e = height * (1 - rise * 0.8) * (0.6 + 0.4 * Math.sin(t * 5 + eSeed[i] * 4));
         eCol[i * 3] = 1.0 * e; eCol[i * 3 + 1] = (0.55 + 0.3 * (1 - rise)) * e; eCol[i * 3 + 2] = 0.18 * e;
@@ -226,10 +226,10 @@
         var f = u.rise / 2.2;
         s.position.set(
           basePos.x + Math.sin(t * 0.4 + u.seed) * 0.4 * f,
-          basePos.y + 0.3 + f * 3.2,
+          basePos.y + 0.6 + f * 3.4,
           basePos.z + Math.cos(t * 0.33 + u.seed) * 0.4 * f
         );
-        var sc = 0.8 + f * 1.6;
+        var sc = 1.0 + f * 1.8;
         s.scale.set(sc, sc, 1);
         s.material.opacity = height * 0.32 * (1 - f);
       }
