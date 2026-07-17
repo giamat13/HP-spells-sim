@@ -61,11 +61,19 @@
 
   <!-- Top-right controls -->
   <div id="controls">
+    <button id="brightness-btn" class="icon-btn" title="Screen brightness">☀</button>
     <button id="view-btn" class="icon-btn" title="Third-person view (C)">🚶</button>
     <button id="capture-btn" class="icon-btn" title="Capture this moment">📷</button>
     <button id="weather-btn" class="icon-btn" title="Dementor weather">☁</button>
     <button id="mute-btn" class="icon-btn" title="Mute">♪</button>
     <button id="menu-toggle" class="icon-btn" title="Menu">☰</button>
+  </div>
+
+  <!-- Brightness slider popover (for weak/dim screens) -->
+  <div id="brightness-popover" class="ui-panel" hidden>
+    <label for="brightness-slider" class="popover-label">Screen brightness</label>
+    <input id="brightness-slider" type="range" min="1" max="100" step="1" value="50">
+    <span id="brightness-value">50</span>
   </div>
 
   <!-- Bottom: cast bar (Patronus choice lives in its own settings modal) -->

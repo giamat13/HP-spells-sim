@@ -462,6 +462,47 @@
         if (hooks.onCapture) hooks.onCapture();
       });
 
+      // Screen brightness compensation: the scene is deliberately dark and
+      // moody, which reads poorly on dim phone/tablet screens or in bright
+      // rooms. A fine-grained 1-100 slider (50 = normal) drives a CSS filter
+      // over the WebGL canvas, so people on weak-brightness screens can
+      // boost it a lot without touching the actual in-scene lighting/mood.
+      var sceneCanvas = document.getElementById('scene');
+      var brightnessBtn = document.getElementById('brightness-btn');
+      var brightnessPopover = document.getElementById('brightness-popover');
+      var brightnessSlider = document.getElementById('brightness-slider');
+      var brightnessValue = document.getElementById('brightness-value');
+
+      function brightnessFilter(v) {
+        // 1..50 -> 0.5x..1x (dim), 50..100 -> 1x..3.2x (strong boost)
+        var b = v <= 50 ? (0.5 + (v / 50) * 0.5) : (1 + ((v - 50) / 50) * 2.2);
+        var c = 1 + Math.max(0, b - 1) * 0.06;
+        var s = 1 + Math.max(0, b - 1) * 0.04;
+        return 'brightness(' + b.toFixed(2) + ') contrast(' + c.toFixed(2) + ') saturate(' + s.toFixed(2) + ')';
+      }
+      function applyBrightness(v) {
+        sceneCanvas.style.filter = v === 50 ? 'none' : brightnessFilter(v);
+        brightnessValue.textContent = v;
+        brightnessBtn.classList.toggle('active', v !== 50);
+      }
+      var brightVal = Math.max(1, Math.min(100, store.get('brightness', 50)));
+      brightnessSlider.value = brightVal;
+      applyBrightness(brightVal);
+
+      brightnessBtn.addEventListener('click', function () {
+        brightnessPopover.hidden = !brightnessPopover.hidden;
+      });
+      brightnessSlider.addEventListener('input', function () {
+        var v = parseInt(brightnessSlider.value, 10);
+        applyBrightness(v);
+        store.set('brightness', v);
+      });
+      document.addEventListener('click', function (ev) {
+        if (brightnessPopover.hidden) return;
+        if (ev.target === brightnessBtn || brightnessPopover.contains(ev.target)) return;
+        brightnessPopover.hidden = true;
+      });
+
       var viewBtn = document.getElementById('view-btn');
       viewBtn.addEventListener('click', function () {
         if (hooks.onViewToggle) hooks.onViewToggle();
