@@ -173,6 +173,7 @@
 
     I.update = function (t, dt) {
       if (!I.active) return;
+      if (followTarget && followTarget.alive) basePos.copy(followTarget.pos);
       phaseT += dt;
 
       if (I.phase === 'ignite' && phaseT >= IGNITE_TIME) {
