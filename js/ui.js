@@ -109,6 +109,15 @@
     if (hooks.onCast) hooks.onCast('accio', null);
   }
 
+  function castBombarda() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('bombarda', { maxima: false });
+  }
+  function castBombardaMaxima() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('bombarda', { maxima: true });
+  }
+
   // "It's LeviOsa, not LevioSAH" — say it wrong (the meme mispronunciation,
   // drawn out with extra trailing A's) and the charm fizzles: only the clip
   // plays, nothing actually levitates.
@@ -195,12 +204,21 @@
 
   var INCENDIO_TARGETS = ['incendio', 'incendo', 'encendio', 'insendio', 'inzendio', 'incendia'];
   var ACCIO_TARGETS = ['accio', 'akio', 'atio', 'atzio', 'axio', 'asio', 'atsio', 'ackio'];
+  var BOMBARDA_TARGETS = ['bombarda', 'bombardo', 'bambarda', 'bombardia', 'bombaria'];
 
   function isIncendioPhrase(text) {
     return INCENDIO_RE.test(text) || phraseHasFuzzyWord(text, INCENDIO_TARGETS);
   }
   function isAccioPhrase(text) {
     return ACCIO_RE.test(text) || phraseHasFuzzyWord(text, ACCIO_TARGETS);
+  }
+
+  // "Bombarda Maxima" must be checked before plain "Bombarda", the same way
+  // Lumos Maxima is checked before plain Lumos.
+  var BOMBARDA_MAXIMA_RE = /^\s*bombarda\s*maxima\b/i;
+  var BOMBARDA_RE = /\bbombarda\b/i;
+  function isBombardaPhrase(text) {
+    return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
   }
 
   function tryIncantation(text) {
@@ -212,6 +230,8 @@
     if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
     if (isIncendioPhrase(text)) { castIncendio(); return true; }
     if (isAccioPhrase(text)) { castAccio(); return true; }
+    if (BOMBARDA_MAXIMA_RE.test(text)) { castBombardaMaxima(); return true; }
+    if (isBombardaPhrase(text)) { castBombarda(); return true; }
     return false;
   }
 
@@ -308,6 +328,8 @@
         if (LUMOS_RE.test(heard)) { castLumosOn(); continue; }
         if (isIncendioPhrase(heard)) { castIncendio(); continue; }
         if (isAccioPhrase(heard)) { castAccio(); continue; }
+        if (BOMBARDA_MAXIMA_RE.test(heard)) { castBombardaMaxima(); continue; }
+        if (isBombardaPhrase(heard)) { castBombarda(); continue; }
       }
     };
     rec.onend = function () {
@@ -334,7 +356,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, or “Accio”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, or “Bombarda Maxima”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -456,7 +478,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, or “Accio”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, or “Bombarda”.';
         } else {
           els.input.value = '';
         }
@@ -500,6 +522,13 @@
         spellAccio.addEventListener('click', castAccio);
         spellAccio.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castAccio(); }
+        });
+      }
+      var spellBombarda = document.getElementById('spell-bombarda');
+      if (spellBombarda) {
+        spellBombarda.addEventListener('click', castBombarda);
+        spellBombarda.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castBombarda(); }
         });
       }
 

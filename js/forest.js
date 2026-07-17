@@ -332,6 +332,35 @@
       }
     };
 
+    // Bombarda knocks nearby trees flat — they fall away from the blast
+    // center along a horizontal axis perpendicular to it, and stay down
+    // (no more wind sway) for the rest of the session.
+    var fellDir = new THREE.Vector3(), fellAxis = new THREE.Vector3(),
+        fellQuat = new THREE.Quaternion(), fellYaw = new THREE.Quaternion(),
+        fellUp = new THREE.Vector3(0, 1, 0);
+    F.fellTrees = function (center, radius) {
+      var felled = [];
+      for (var i = 0; i < F.trees.length; i++) {
+        var tr = F.trees[i];
+        if (tr.userData.felled) continue;
+        var dx = tr.position.x - center.x, dz = tr.position.z - center.z;
+        var dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > radius) continue;
+        fellDir.set(dist > 0.01 ? dx / dist : 1, 0, dist > 0.01 ? dz / dist : 0);
+        fellAxis.set(-fellDir.z, 0, fellDir.x).normalize();
+        fellYaw.setFromAxisAngle(fellUp, tr.rotation.y);
+        tr.userData.felled = true;
+        tr.userData.fallAxis = fellAxis.clone();
+        tr.userData.fallYawQuat = fellYaw.clone();
+        tr.userData.fallAngle = rand(1.25, 1.48);
+        tr.userData.fallProgress = 0;
+        tr.userData.fallDelay = (dist / radius) * 0.15;
+        tr.userData.fallDur = rand(0.55, 0.85);
+        felled.push(tr);
+      }
+      return felled;
+    };
+
     // Dust motes drifting in the moonlight
     var dustGeo = new THREE.BufferGeometry();
     var dustPos = new Float32Array(Q.dust * 3);
@@ -401,9 +430,23 @@
     };
 
     F.update = function (t, dt) {
-      // Wind sway
+      // Wind sway (felled trees skip this and animate their fall instead)
       for (var i = 0; i < F.trees.length; i++) {
         var tr = F.trees[i];
+        if (tr.userData.felled) {
+          if (tr.userData.fallProgress < 1) {
+            if (tr.userData.fallDelay > 0) {
+              tr.userData.fallDelay -= dt;
+            } else {
+              tr.userData.fallProgress += dt / tr.userData.fallDur;
+              var f = Math.min(1, tr.userData.fallProgress);
+              var e = f * f * (3 - 2 * f);
+              fellQuat.setFromAxisAngle(tr.userData.fallAxis, e * tr.userData.fallAngle);
+              tr.quaternion.copy(fellQuat).multiply(tr.userData.fallYawQuat);
+            }
+          }
+          continue;
+        }
         var ph = tr.userData.phase;
         tr.rotation.z = Math.sin(t * 0.55 + ph) * 0.012 + Math.sin(t * 1.7 + ph * 2) * 0.004;
         tr.rotation.x = Math.cos(t * 0.4 + ph) * 0.009;

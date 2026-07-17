@@ -41,6 +41,7 @@
   var leviosa = Leviosa.create(scene, forest);
   var incendio = Incendio.create(scene, forest);
   var accio = Accio.create(scene, forest);
+  var bombarda = Bombarda.create(scene, forest);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -94,6 +95,7 @@
   leviosa.getCameraPose = getCameraPose;
   incendio.getCameraPose = getCameraPose;
   accio.getCameraPose = getCameraPose;
+  bombarda.getCameraPose = getCameraPose;
 
   var leviosaCaptionTimer = null;
   leviosa.onPhase = function (state) {
@@ -134,6 +136,26 @@
     UI.caption(text);
     clearTimeout(accioCaptionTimer);
     if (text) accioCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var bombardaCrackle = null;
+  var bombardaCaptionTimer = null;
+  var bombardaMaximaFlag = false;
+  bombarda.onPhase = function (state) {
+    var text = null, life = 1600;
+    if (state === 'blast') {
+      text = bombardaMaximaFlag ? 'BOMBARDA MAXIMA!' : 'Bombarda!';
+      AudioSys.bombardaBlast(bombardaMaximaFlag);
+    } else if (state === 'burn') {
+      bombardaCrackle = AudioSys.bombardaCrackle();
+    } else if (state === 'fade') {
+      if (bombardaCrackle) { bombardaCrackle.stop(); bombardaCrackle = null; }
+    } else if (state === 'done') {
+      text = null;
+    }
+    UI.caption(text);
+    clearTimeout(bombardaCaptionTimer);
+    if (text) bombardaCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- environment mood ---------- */
@@ -345,6 +367,9 @@
         incendio.cast();
       } else if (spellId === 'accio') {
         accio.cast();
+      } else if (spellId === 'bombarda') {
+        bombardaMaximaFlag = !!(payload && payload.maxima);
+        bombarda.cast(bombardaMaximaFlag);
       }
     },
     onCapture: capture,
@@ -367,6 +392,7 @@
   // small handle for testing/tinkering from the console
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
+    bombarda: bombarda,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -383,8 +409,17 @@
     leviosa.update(t, dt);
     incendio.update(t, dt);
     accio.update(t, dt);
+    bombarda.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
+
+    // Bombarda's shockwave rattles the view — a small decaying random jitter
+    // applied on top of whatever the camera is already doing.
+    if (bombarda.shake > 0.001) {
+      camera.position.x += (Math.random() - 0.5) * bombarda.shake * 0.5;
+      camera.position.y += (Math.random() - 0.5) * bombarda.shake * 0.35;
+      camera.position.z += (Math.random() - 0.5) * bombarda.shake * 0.5;
+    }
 
     // mood: patronus light and Lumos Maxima tint the fog and lift the ambient
     // level scene-wide; plain Lumos stays a purely local point light so it

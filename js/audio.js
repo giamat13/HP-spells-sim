@@ -522,6 +522,65 @@
     return { stop: function () { stopped = true; clearTimeout(id); } };
   }
 
+  // Bombarda: a heavy detonation — a sub-bass punch, a broadband blast,
+  // a scatter of crackling debris impacts, and a rumbling tail. Maxima is
+  // louder, deeper, and lingers longer.
+  function bombardaBlast(big) {
+    var t = now();
+    var dur = big ? 1.4 : 1.0;
+
+    var o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(big ? 70 : 90, t);
+    o.frequency.exponentialRampToValueAtTime(big ? 28 : 34, t + dur * 0.55);
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.linearRampToValueAtTime(big ? 0.5 : 0.36, t + 0.02);
+    og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(og); out(og, 0.75, 0.4);
+    o.start(t); o.stop(t + dur + 0.05);
+
+    var src = noiseSource(false);
+    var lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(big ? 3200 : 2400, t);
+    lp.frequency.exponentialRampToValueAtTime(300, t + dur * 0.7);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(big ? 0.42 : 0.32, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.85);
+    src.connect(lp); lp.connect(g);
+    out(g, 0.6, 0.6);
+    src.start(t); src.stop(t + dur);
+
+    var debrisCount = big ? 14 : 8;
+    for (var i = 0; i < debrisCount; i++) {
+      (function (when) {
+        var n = noiseSource(false);
+        var bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass'; bp.Q.value = 2.2;
+        bp.frequency.value = 500 + Math.random() * 1800;
+        var gg = ctx.createGain();
+        gg.gain.setValueAtTime(0.05 + Math.random() * 0.05, when);
+        gg.gain.exponentialRampToValueAtTime(0.0005, when + 0.08 + Math.random() * 0.1);
+        n.connect(bp); bp.connect(gg);
+        out(gg, 0.55, 0.45);
+        n.start(when); n.stop(when + 0.2);
+      })(t + 0.15 + Math.random() * dur * 0.9);
+    }
+
+    var rn = noiseSource(false);
+    var rlp = ctx.createBiquadFilter();
+    rlp.type = 'lowpass'; rlp.frequency.value = 90;
+    var rg = ctx.createGain();
+    var tail = dur + (big ? 1.5 : 1.0);
+    rg.gain.setValueAtTime(0.0001, t);
+    rg.gain.linearRampToValueAtTime(big ? 0.16 : 0.1, t + 0.3);
+    rg.gain.exponentialRampToValueAtTime(0.0005, t + tail);
+    rn.connect(rlp); rlp.connect(rg);
+    out(rg, 0.5, 0.65);
+    rn.start(t); rn.stop(t + tail + 0.05);
+  }
+
   /* ---------- dementor weather ---------- */
 
   var rumbleGain = null;
@@ -610,6 +669,13 @@
     },
     accioPull: function () { if (ctx && !muted) accioPull(); },
     accioCatch: function () { if (ctx && !muted) accioCatch(); },
+    bombardaBlast: function (big) { if (ctx && !muted) bombardaBlast(!!big); },
+    // Bombarda's lingering fires reuse Incendio's crackle/hiss loop — it's
+    // just generic noise plumbing, not tied to the Incendio module's state.
+    bombardaCrackle: function () {
+      if (!ctx || muted) return { stop: function () {} };
+      return incendioLoop();
+    },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);
