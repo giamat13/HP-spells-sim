@@ -334,6 +334,7 @@
     var t = clock.elapsedTime;
 
     forest.update(t, dt);
+    if (!walk.locked) patronus.setPointer(pointer.x, pointer.y);
     patronus.update(t, dt);
     lumos.update(t, dt);
     if (!walk.locked) leviosa.setPointer(pointer.x, pointer.y);

@@ -7,6 +7,7 @@
   // Sequence timeline (seconds from cast). Run/fade ends are set per cast:
   // run duration = path length / animal speed, so each animal has its own pace.
   var T_BURST = 0.9, T_SWIRL_END = 3.4, T_FORM_END = 6.6;
+  var DRIFT_MAX = 8;    // how far the mouse can steer the running Patronus off its path
 
   function smooth(a, b, x) {
     var t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -81,6 +82,7 @@
     var faceQuat = new THREE.Quaternion();      // eased facing actually used
     var bankQuat = new THREE.Quaternion();
     var haveFace = false, bank = 0;
+    var offset = { x: 0, z: 0 }, desired = { x: 0, z: 0 };
     var FWD = new THREE.Vector3(1, 0, 0);
     var v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3();
     var groundH = 0;
@@ -149,6 +151,8 @@
       castT = 0;
       haveFace = false;
       bank = 0;
+      offset.x = 0; offset.z = 0;
+      desired.x = 0; desired.z = 0;
       P.active = true;
       P.phase = 'charge';
       P.onPhase('charge');
@@ -167,6 +171,14 @@
       light.position.copy(tip);
       light.intensity = 0;
       return true;
+    };
+
+    // Absolute normalized pointer position (-1..1) — steers the running/flying
+    // Patronus sideways/forward off its base path, the way Leviosa's setPointer
+    // steers a lifted object.
+    P.setPointer = function (px, py) {
+      desired.x = Math.max(-1, Math.min(1, px)) * DRIFT_MAX;
+      desired.z = Math.max(-1, Math.min(1, py)) * DRIFT_MAX;
     };
 
     function spawnTrail(count, dt) {
@@ -305,7 +317,12 @@
         var u, tangentT;
         if (P.phase === 'form') { u = 0.0001; }
         else { u = runU((castT - T_FORM_END) / (runEnd - T_FORM_END)); }
+        var driftF = 1 - Math.exp(-dt * 1.6);
+        offset.x += (desired.x - offset.x) * driftF;
+        offset.z += (desired.z - offset.z) * driftF;
+
         path.getPointAt(Math.min(u, 0.999), v1);       // origin
+        v1.x += offset.x; v1.z += offset.z;             // mouse-steered drift off the base path
         path.getTangentAt(Math.min(u, 0.999), v2);     // facing
         v2.y *= 0.35; v2.normalize();
         quat.setFromUnitVectors(FWD, v2);

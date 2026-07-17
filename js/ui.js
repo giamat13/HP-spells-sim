@@ -107,6 +107,15 @@
     AudioSys.playLeviosaMeme();
   }
 
+  // "Expecto Patronum" is long and Latin, so both ASR and unsure speakers
+  // mangle the first word constantly (aspecto, aspeto, ekspecto...); accept
+  // any of those plus a bare "patro-" fragment for the second word.
+  var EXPECTO_RE = /\b(expecto|ex?specto|aspecto|aspeto|aspeko|aspeku|ekspecto|especto)\b/i;
+  var PATRONUM_RE = /\bpatro/i;
+  function isPatronusPhrase(text) {
+    return EXPECTO_RE.test(text) && PATRONUM_RE.test(text);
+  }
+
   // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
   // routinely mishears one for the other — accept the common variants.
   var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
@@ -124,7 +133,7 @@
   }
 
   function tryIncantation(text) {
-    if (/expecto\s*patronum/i.test(text)) { castPatronus(); return true; }
+    if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (LEVIOSA_MEME_RE.test(text)) { castLeviosaMeme(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
     if (NOX_RE.test(text)) { castLumosOff(); return true; }
@@ -214,7 +223,7 @@
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
-        if (/expecto/i.test(heard) && /patro/i.test(heard)) castPatronus();
+        if (isPatronusPhrase(heard)) castPatronus();
         else if (LEVIOSA_MEME_RE.test(heard)) castLeviosaMeme();
         else if (isLeviosaPhrase(heard)) {
           if (spokenMsPerWord(heard) > voice.msPerWord) castLeviosaMeme();
