@@ -3,11 +3,23 @@
   "version": "1.0.0",
   "description": "Harry Potter - The Spellbook",
   "main": "electron-main.js",
+  "author": "HP Spellbook",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "package": "electron-builder --win portable"
   },
   "devDependencies": {
     "electron": "^31.0.0",
-    "electron-packager": "^17.1.2"
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.hp.spellbook",
+    "productName": "HP-Spellbook",
+    "directories": { "output": "dist" },
+    "files": ["**/*", "!dist/**", "!buid.bat", "!.git/**"],
+    "win": {
+      "target": "portable",
+      "artifactName": "HP-Spellbook.exe"
+    }
   }
 }

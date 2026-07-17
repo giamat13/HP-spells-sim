@@ -3,7 +3,7 @@ setlocal
 
 echo ==========================================
 echo   Harry Potter Spellbook - Build to EXE
-echo   (portable, no installer, Electron)
+echo   (single portable file, no installer, Electron)
 echo ==========================================
 echo.
 
@@ -14,7 +14,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/3] Installing dependencies (electron + electron-packager)...
+echo [1/3] Installing dependencies (electron + electron-builder)...
 call npm install
 if errorlevel 1 (
     echo [ERROR] npm install failed.
@@ -23,17 +23,17 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/3] Packaging app for Windows (portable folder, no installer)...
-call npx electron-packager . "HP-Spellbook" --platform=win32 --arch=x64 --out=dist --overwrite
+echo [2/3] Packaging app as a single portable EXE for Windows...
+call npx electron-builder --win portable
 if errorlevel 1 (
-    echo [ERROR] electron-packager failed.
+    echo [ERROR] electron-builder failed.
     pause
     exit /b 1
 )
 
 echo.
 echo [3/3] Done!
-echo Your app is in: dist\HP-Spellbook-win32-x64\HP-Spellbook.exe
-echo Just double-click it to run - no installation needed.
+echo Your app is in: dist\HP-Spellbook.exe
+echo Just double-click it to run - no installation needed (it self-extracts to a temp folder at launch).
 echo.
 pause
