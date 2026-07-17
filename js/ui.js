@@ -261,11 +261,15 @@
       phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
   }
 
-  // "Expelliarmus" gets heard/pronounced as "expelliarmus"/"expeliarmus"/
-  // "expel arm us"/"expelli armas".
-  var EXPELLIARMUS_RE = /\bex\s*pell?i?\s*ar?m[ue]s\b/i;
+  // "Expelliarmus" is long and Latin like Expecto Patronum, so ASR mangles
+  // it heavily and often splits it into separate words ("expel", "arm us").
+  // Match the sound shape broadly (allowing spaces between the syllables and
+  // either vowel on either end) plus a fuzzy word-list fallback for whenever
+  // ASR mashes it into one unrecognizable blob.
+  var EXPELLIARMUS_RE = /\bex\s*p[ae]l+i?\s*a?r?m\s*[ueoa]s?\b/i;
   var EXPELLIARMUS_TARGETS = ['expelliarmus', 'expeliarmus', 'expeliarmous',
-    'expelliarmous', 'expeliarmus', 'expel armas', 'expelli armas'];
+    'expelliarmous', 'expelarmus', 'expeliarmas', 'expelearmus', 'expeliarmos',
+    'expiliarmus', 'expelyarmus', 'expelliarmas', 'expelliarmos', 'xpelliarmus'];
   function isExpelliarmusPhrase(text) {
     return EXPELLIARMUS_RE.test(text) || phraseHasFuzzyWord(text, EXPELLIARMUS_TARGETS);
   }

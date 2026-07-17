@@ -11,6 +11,7 @@
   var SPAWN_MIN_R = 12, SPAWN_MAX_R = 65, WANDER_R = 16, WALK_SPEED = 1.5;
   var FIRE_RADIUS = 1.7, FIRE_DPS = 22;
   var BOMBARDA_DAMAGE = 45, BOMBARDA_MAXIMA_DAMAGE = 100;
+  var EXPELLIARMUS_DAMAGE = MAX_HP / 5;
   var ATTACK_RANGE = 17, ATTACK_MIN_CD = 4, ATTACK_MAX_CD = 7.5;
   var ATTACK_DMG_MIN = 4, ATTACK_DMG_MAX = 7, CURSE_TRAVEL_TIME = 0.55;
   var PLAYER_MAX_HP = 100, RESPAWN_MIN = 9, RESPAWN_MAX = 16, FALL_TIME = 0.6;
@@ -242,7 +243,8 @@
     // Disarms the nearest living zombie to `fromPos` (within `maxRange`,
     // optionally restricted to a forward-facing cone) — used by Expelliarmus.
     // A disarmed zombie keeps wandering but can no longer fire curses at the
-    // player; its wand is knocked out of its hand.
+    // player; its wand is knocked out of its hand, and it takes a small
+    // chunk of damage from the force of the disarming blow.
     Z.disarmNearest = function (fromPos, maxRange, facing) {
       var range = maxRange || Infinity, best = null, bestD = Infinity;
       for (var i = 0; i < list.length; i++) {
@@ -260,6 +262,7 @@
       if (!best) return null;
       best.disarmed = true;
       best.mesh.userData.wand.visible = false;
+      damage(best, EXPELLIARMUS_DAMAGE);
       var spot = best.pos.clone();
       spot.y += 1.1;
       return spot;
