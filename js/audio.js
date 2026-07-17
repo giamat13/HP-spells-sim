@@ -320,6 +320,117 @@
     n.start(t); n.stop(t + 0.32);
   }
 
+  // Incendio: a sharp whoosh as the flame catches, with a crackling flare-up.
+  function incendioIgnite() {
+    var t = now();
+    var src = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 1.1;
+    bp.frequency.setValueAtTime(900, t);
+    bp.frequency.exponentialRampToValueAtTime(2600, t + 0.3);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.14, t + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    src.connect(bp); bp.connect(g);
+    out(g, 0.7, 0.4);
+    src.start(t); src.stop(t + 0.6);
+    var o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.4);
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(0.05, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    o.connect(og); out(og, 0.6, 0.4);
+    o.start(t); o.stop(t + 0.5);
+  }
+
+  // A single crackling pop from the fire.
+  function firePop(t) {
+    var n = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 3;
+    bp.frequency.value = 1400 + Math.random() * 2200;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.02 + Math.random() * 0.025, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 0.03 + Math.random() * 0.05);
+    n.connect(bp); bp.connect(g);
+    out(g, 0.6, 0.4);
+    n.start(t); n.stop(t + 0.1);
+  }
+
+  // Looping fire crackle + soft hiss while Incendio burns. Returns {stop()}.
+  function incendioLoop() {
+    var stopped = false, id;
+    var hiss = noiseSource();
+    var hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 2200;
+    var hissGain = ctx.createGain(); hissGain.gain.value = 0.012;
+    hiss.connect(hp); hp.connect(hissGain);
+    out(hissGain, 0.6, 0.4);
+    hiss.start();
+    function loop() {
+      if (stopped) return;
+      var t = now() + 0.02;
+      var k = 1 + (Math.random() * 2 | 0);
+      for (var i = 0; i < k; i++) firePop(t + i * (0.03 + Math.random() * 0.05));
+      id = setTimeout(loop, 90 + Math.random() * 160);
+      timers.push(id);
+    }
+    loop();
+    return {
+      stop: function () {
+        stopped = true; clearTimeout(id);
+        var t = now();
+        hissGain.gain.cancelScheduledValues(t);
+        hissGain.gain.linearRampToValueAtTime(0, t + 0.6);
+        hiss.stop(t + 0.65);
+      }
+    };
+  }
+
+  // Accio: a rushing whoosh with rising pitch as the object rushes closer.
+  function accioPull() {
+    var t = now();
+    var src = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 0.8;
+    bp.frequency.setValueAtTime(2200, t);
+    bp.frequency.exponentialRampToValueAtTime(500, t + 0.85);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.13, t + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
+    src.connect(bp); bp.connect(g);
+    out(g, 0.55, 0.55);
+    src.start(t); src.stop(t + 1.0);
+    var o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(180, t);
+    o.frequency.exponentialRampToValueAtTime(360, t + 0.8);
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.05, t + 0.7);
+    og.gain.exponentialRampToValueAtTime(0.0005, t + 0.95);
+    o.connect(og); out(og, 0.6, 0.5);
+    o.start(t); o.stop(t + 1.0);
+  }
+
+  // Soft catch as the summoned object arrives and settles into hovering.
+  function accioCatch() {
+    var t = now();
+    pluck(83, t, 0.3);
+    var n = noiseSource(false);
+    var lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 900;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.03, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    n.connect(lp); lp.connect(g); out(g, 0.7, 0.4);
+    n.start(t); n.stop(t + 0.2);
+  }
+
   // Bright chord when the animal takes shape.
   function formationChime() {
     var t = now();
@@ -492,6 +603,13 @@
     leviosaRise: function () { if (ctx && !muted) leviosaRise(); },
     leviosaSettle: function () { if (ctx && !muted) leviosaSettle(); },
     playLeviosaMeme: function () { if (!muted) playLeviosaMeme(); },
+    incendioIgnite: function () { if (ctx && !muted) incendioIgnite(); },
+    incendioLoop: function () {
+      if (!ctx || muted) return { stop: function () {} };
+      return incendioLoop();
+    },
+    accioPull: function () { if (ctx && !muted) accioPull(); },
+    accioCatch: function () { if (ctx && !muted) accioCatch(); },
     animalLoop: function (a) {
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);

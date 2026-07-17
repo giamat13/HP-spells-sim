@@ -99,6 +99,16 @@
     if (hooks.onCast) hooks.onCast('leviosa', null);
   }
 
+  function castIncendio() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('incendio', null);
+  }
+
+  function castAccio() {
+    if (casting) return;
+    if (hooks.onCast) hooks.onCast('accio', null);
+  }
+
   // "It's LeviOsa, not LevioSAH" — say it wrong (the meme mispronunciation,
   // drawn out with extra trailing A's) and the charm fizzles: only the clip
   // plays, nothing actually levitates.
@@ -132,6 +142,67 @@
     return LEVIOSA_WORD_RE.test(text) || (WINGARDIUM_RE.test(text) && /levi/i.test(text));
   }
 
+  // "Incendio" is short and phonetic, but ASR (and non-native pronunciation)
+  // still softens or swaps the middle consonant a lot — match the sound
+  // pattern (in + c/s/z + en + d/t + i/e + o) instead of a fixed spelling.
+  var INCENDIO_RE = /\bin\s*[csz]en?[dt]e?[iy]?o'?s?\b/i;
+  // "Accio" is short too, and gets heard/pronounced as "akio"/"atzio"/"axio"/
+  // "atio" etc. — match the a + k/t/ts/x + i/y + o sound shape broadly.
+  var ACCIO_RE = /\ba[ck]{1,2}[iy]o\b|\bat[sz]?[iy]o\b|\bax[iy]o\b|\bas[iy]o\b/i;
+
+  // Fallback fuzzy matcher for whenever the regex sound-shapes above still
+  // miss a mis-hearing entirely (English ASR forcing the word toward some
+  // unrelated dictionary word). Same idea as the Expecto Patronum handling —
+  // accept more than one exact spelling — just done generically: compare
+  // each spoken word against a short list of known-close spellings and
+  // allow a small edit-distance tolerance instead of hand-writing every
+  // variant as its own regex branch.
+  function levenshtein(a, b) {
+    var m = a.length, n = b.length;
+    if (!m) return n;
+    if (!n) return m;
+    var row = new Array(n + 1);
+    for (var j = 0; j <= n; j++) row[j] = j;
+    for (var i = 1; i <= m; i++) {
+      var prev = row[0];
+      row[0] = i;
+      for (j = 1; j <= n; j++) {
+        var tmp = row[j];
+        row[j] = Math.min(
+          row[j] + 1,
+          row[j - 1] + 1,
+          prev + (a[i - 1] === b[j - 1] ? 0 : 1)
+        );
+        prev = tmp;
+      }
+    }
+    return row[n];
+  }
+  function wordCloseTo(word, target) {
+    var maxDist = target.length <= 4 ? 1 : (target.length <= 6 ? 2 : 3);
+    return levenshtein(word, target) <= maxDist;
+  }
+  function phraseHasFuzzyWord(text, targets) {
+    var words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
+    for (var i = 0; i < words.length; i++) {
+      if (words[i].length < 3) continue;
+      for (var j = 0; j < targets.length; j++) {
+        if (wordCloseTo(words[i], targets[j])) return true;
+      }
+    }
+    return false;
+  }
+
+  var INCENDIO_TARGETS = ['incendio', 'incendo', 'encendio', 'insendio', 'inzendio', 'incendia'];
+  var ACCIO_TARGETS = ['accio', 'akio', 'atio', 'atzio', 'axio', 'asio', 'atsio', 'ackio'];
+
+  function isIncendioPhrase(text) {
+    return INCENDIO_RE.test(text) || phraseHasFuzzyWord(text, INCENDIO_TARGETS);
+  }
+  function isAccioPhrase(text) {
+    return ACCIO_RE.test(text) || phraseHasFuzzyWord(text, ACCIO_TARGETS);
+  }
+
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (LEVIOSA_MEME_RE.test(text)) { castLeviosaMeme(); return true; }
@@ -139,6 +210,8 @@
     if (NOX_RE.test(text)) { castLumosOff(); return true; }
     if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
     if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
+    if (isIncendioPhrase(text)) { castIncendio(); return true; }
+    if (isAccioPhrase(text)) { castAccio(); return true; }
     return false;
   }
 
@@ -223,15 +296,18 @@
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
-        if (isPatronusPhrase(heard)) castPatronus();
-        else if (LEVIOSA_MEME_RE.test(heard)) castLeviosaMeme();
-        else if (isLeviosaPhrase(heard)) {
+        if (isPatronusPhrase(heard)) { castPatronus(); continue; }
+        if (LEVIOSA_MEME_RE.test(heard)) { castLeviosaMeme(); continue; }
+        if (isLeviosaPhrase(heard)) {
           if (spokenMsPerWord(heard) > voice.msPerWord) castLeviosaMeme();
           else castLeviosa();
+          continue;
         }
-        else if (NOX_RE.test(heard)) castLumosOff();
-        else if (/lumos/i.test(heard) && /maxim/i.test(heard)) castLumosMaxima();
-        else if (/lumos/i.test(heard)) castLumosOn();
+        if (NOX_RE.test(heard)) { castLumosOff(); continue; }
+        if (LUMOS_MAXIMA_RE.test(heard)) { castLumosMaxima(); continue; }
+        if (LUMOS_RE.test(heard)) { castLumosOn(); continue; }
+        if (isIncendioPhrase(heard)) { castIncendio(); continue; }
+        if (isAccioPhrase(heard)) { castAccio(); continue; }
       }
     };
     rec.onend = function () {
@@ -258,7 +334,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, or “Wingardium Leviosa”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, or “Accio”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -380,7 +456,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, or “Wingardium Leviosa”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, or “Accio”.';
         } else {
           els.input.value = '';
         }
@@ -410,6 +486,20 @@
         spellLeviosa.addEventListener('click', castLeviosa);
         spellLeviosa.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castLeviosa(); }
+        });
+      }
+      var spellIncendio = document.getElementById('spell-incendio');
+      if (spellIncendio) {
+        spellIncendio.addEventListener('click', castIncendio);
+        spellIncendio.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castIncendio(); }
+        });
+      }
+      var spellAccio = document.getElementById('spell-accio');
+      if (spellAccio) {
+        spellAccio.addEventListener('click', castAccio);
+        spellAccio.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castAccio(); }
         });
       }
 

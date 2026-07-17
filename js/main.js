@@ -39,6 +39,8 @@
   var patronus = Patronus.create(scene, Q);
   var lumos = Lumos.create(scene);
   var leviosa = Leviosa.create(scene, forest);
+  var incendio = Incendio.create(scene, forest);
+  var accio = Accio.create(scene, forest);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -84,11 +86,14 @@
   };
 
   var campose = { pos: new THREE.Vector3(), dir: new THREE.Vector3() };
-  leviosa.getCameraPose = function () {
+  function getCameraPose() {
     campose.pos.copy(camera.position);
     camera.getWorldDirection(campose.dir);
     return campose;
-  };
+  }
+  leviosa.getCameraPose = getCameraPose;
+  incendio.getCameraPose = getCameraPose;
+  accio.getCameraPose = getCameraPose;
 
   var leviosaCaptionTimer = null;
   leviosa.onPhase = function (state) {
@@ -100,6 +105,35 @@
     UI.caption(text);
     clearTimeout(leviosaCaptionTimer);
     if (text) leviosaCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var incendioCrackle = null;
+  var incendioCaptionTimer = null;
+  incendio.onPhase = function (state) {
+    var text = null, life = 1600;
+    if (state === 'ignite') {
+      text = 'Incendio!';
+      AudioSys.incendioIgnite();
+      incendioCrackle = AudioSys.incendioLoop();
+    } else if (state === 'fade') {
+      if (incendioCrackle) { incendioCrackle.stop(); incendioCrackle = null; }
+    } else if (state === 'out') {
+      text = null;
+    }
+    UI.caption(text);
+    clearTimeout(incendioCaptionTimer);
+    if (text) incendioCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var accioCaptionTimer = null;
+  accio.onPhase = function (state) {
+    var text = null, life = 1600;
+    if (state === 'fly') { text = 'Accio!'; AudioSys.accioPull(); }
+    else if (state === 'drop') { AudioSys.accioCatch(); }
+    else if (state === 'none') { text = 'Nothing far enough away to summon.'; }
+    UI.caption(text);
+    clearTimeout(accioCaptionTimer);
+    if (text) accioCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- environment mood ---------- */
@@ -307,6 +341,10 @@
         lumos.set(payload.on, payload.maxima);
       } else if (spellId === 'leviosa') {
         leviosa.cast();
+      } else if (spellId === 'incendio') {
+        incendio.cast();
+      } else if (spellId === 'accio') {
+        accio.cast();
       }
     },
     onCapture: capture,
@@ -327,7 +365,10 @@
   var clock = new THREE.Clock();
 
   // small handle for testing/tinkering from the console
-  window.HP = { patronus: patronus, lumos: lumos, leviosa: leviosa, forest: forest, quality: Q, isMobile: isMobile };
+  window.HP = {
+    patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
+    forest: forest, quality: Q, isMobile: isMobile
+  };
 
   function frame() {
     requestAnimationFrame(frame);
@@ -340,6 +381,8 @@
     lumos.update(t, dt);
     if (!walk.locked) leviosa.setPointer(pointer.x, pointer.y);
     leviosa.update(t, dt);
+    incendio.update(t, dt);
+    accio.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 
