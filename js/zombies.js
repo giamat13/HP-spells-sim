@@ -85,6 +85,7 @@
     wandTip.position.y = -0.78;
     armR.add(wandTip);
     g.userData.wandTip = wandTip;
+    g.userData.wand = wand;
 
     return g;
   }
@@ -172,6 +173,8 @@
       z.waitT = rand(0, 1.5);
       z.attackCd = rand(ATTACK_MIN_CD, ATTACK_MAX_CD);
       z.pulled = false;
+      z.disarmed = false;
+      z.mesh.userData.wand.visible = true;
       z.mesh.visible = true;
     }
 
@@ -234,6 +237,32 @@
         if (d < bestD) { bestD = d; best = z; }
       }
       return best;
+    };
+
+    // Disarms the nearest living zombie to `fromPos` (within `maxRange`,
+    // optionally restricted to a forward-facing cone) — used by Expelliarmus.
+    // A disarmed zombie keeps wandering but can no longer fire curses at the
+    // player; its wand is knocked out of its hand.
+    Z.disarmNearest = function (fromPos, maxRange, facing) {
+      var range = maxRange || Infinity, best = null, bestD = Infinity;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive || z.disarmed) continue;
+        tmpToTarget.subVectors(z.pos, fromPos);
+        var d = tmpToTarget.length();
+        if (d > range) continue;
+        if (facing && d > 0.01) {
+          tmpToTarget.multiplyScalar(1 / d);
+          if (tmpToTarget.dot(facing) < 0.35) continue;
+        }
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      if (!best) return null;
+      best.disarmed = true;
+      best.mesh.userData.wand.visible = false;
+      var spot = best.pos.clone();
+      spot.y += 1.1;
+      return spot;
     };
 
     // Damages the nearest living zombie within `radius` of `pos` by a flat
@@ -374,8 +403,9 @@
         barCol.copy(barRed).lerp(barGreen, frac);
         z.barFg.material.color.copy(barCol);
 
-        // Curse attack, on its own cooldown, only while enabled and in range.
-        if (Z.attackEnabled && !z.pulled) {
+        // Curse attack, on its own cooldown, only while enabled, in range,
+        // and not disarmed (Expelliarmus).
+        if (Z.attackEnabled && !z.pulled && !z.disarmed) {
           z.attackCd -= dt;
           if (z.attackCd <= 0 && z.pos.distanceTo(pose.pos) <= ATTACK_RANGE) {
             fireCurse(z, pose.pos);

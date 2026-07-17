@@ -607,6 +607,33 @@
     n.start(t); n.stop(t + 0.2);
   }
 
+  // Expelliarmus: a bright rising zap plus a sharp crack — the wand being
+  // wrenched away.
+  function expelliarmusZap() {
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(500, t);
+    o.frequency.exponentialRampToValueAtTime(1800, t + 0.14);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); out(g, 0.7, 0.55);
+    o.start(t); o.stop(t + 0.22);
+
+    var n = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 1.6;
+    bp.frequency.setValueAtTime(1400, t);
+    bp.frequency.exponentialRampToValueAtTime(3200, t + 0.1);
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.13, t);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.15);
+    n.connect(bp); bp.connect(ng);
+    out(ng, 0.7, 0.5);
+    n.start(t); n.stop(t + 0.16);
+  }
+
   /* ---------- dementor weather ---------- */
 
   var rumbleGain = null;
@@ -707,6 +734,7 @@
       return animalLoop(a);
     },
     setDementor: setDementor,
-    avadaCurse: function () { if (ctx && !muted) avadaCurse(); }
+    avadaCurse: function () { if (ctx && !muted) avadaCurse(); },
+    expelliarmusZap: function () { if (ctx && !muted) expelliarmusZap(); }
   };
 })();

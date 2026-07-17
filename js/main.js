@@ -45,6 +45,7 @@
   var bombarda = Bombarda.create(scene, forest);
   var zombies = Zombies.create(scene, forest, bombarda, incendio);
   var avada = Avada.create(scene, zombies);
+  var expelliarmus = Expelliarmus.create(scene, zombies);
   incendio.zombies = zombies;
   depulso.zombies = zombies;
   depulso.incendio = incendio;
@@ -176,6 +177,8 @@
   zombies.getCameraPose = getCameraPose;
   avada.getCameraPose = getCameraPose;
   avada.getWandTip = getWandTip;
+  expelliarmus.getCameraPose = getCameraPose;
+  expelliarmus.getWandTip = getWandTip;
 
   var zombieHitCaptionTimer = null;
   zombies.onPlayerHealth = function (hp, max) { UI.setPlayerHealth(hp, max); };
@@ -193,6 +196,16 @@
     UI.caption(text);
     clearTimeout(avadaCaptionTimer);
     if (text) avadaCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var expelliarmusCaptionTimer = null;
+  expelliarmus.onPhase = function (state) {
+    var text = null, life = 1400;
+    if (state === 'cast') { text = 'Expelliarmus!'; AudioSys.expelliarmusZap(); }
+    else if (state === 'none') { text = 'No enemy close enough.'; }
+    UI.caption(text);
+    clearTimeout(expelliarmusCaptionTimer);
+    if (text) expelliarmusCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- perspective (first-person / third-person) ---------- */
@@ -357,6 +370,11 @@
       // the mouse can't reach the spell menu — so it gets its own key.
       AudioSys.init();
       avada.cast();
+    } else if (ev.code === 'KeyG') {
+      // Same reasoning as Avada's KeyF: Expelliarmus targets an enemy too,
+      // so it needs to work while walking/pointer-locked.
+      AudioSys.init();
+      expelliarmus.cast();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -541,6 +559,8 @@
         bombarda.cast(false);
       } else if (spellId === 'avada') {
         avada.cast();
+      } else if (spellId === 'expelliarmus') {
+        expelliarmus.cast();
       }
     },
     onCapture: capture,
@@ -568,7 +588,7 @@
   // small handle for testing/tinkering from the console
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
-    depulso: depulso, bombarda: bombarda, zombies: zombies, avada: avada,
+    depulso: depulso, bombarda: bombarda, zombies: zombies, avada: avada, expelliarmus: expelliarmus,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -589,6 +609,7 @@
     bombarda.update(t, dt);
     zombies.update(t, dt);
     avada.update(t, dt);
+    expelliarmus.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 

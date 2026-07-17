@@ -123,6 +123,10 @@
     if (hooks.onCast) hooks.onCast('avada', null);
   }
 
+  function castExpelliarmus() {
+    if (hooks.onCast) hooks.onCast('expelliarmus', null);
+  }
+
   // Confringo is presented as its own spell, but under the hood it's just
   // Bombarda's blast fired with the "confringo" caption and no Maxima variant.
   function castConfringo() {
@@ -257,6 +261,15 @@
       phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
   }
 
+  // "Expelliarmus" gets heard/pronounced as "expelliarmus"/"expeliarmus"/
+  // "expel arm us"/"expelli armas".
+  var EXPELLIARMUS_RE = /\bex\s*pell?i?\s*ar?m[ue]s\b/i;
+  var EXPELLIARMUS_TARGETS = ['expelliarmus', 'expeliarmus', 'expeliarmous',
+    'expelliarmous', 'expeliarmus', 'expel armas', 'expelli armas'];
+  function isExpelliarmusPhrase(text) {
+    return EXPELLIARMUS_RE.test(text) || phraseHasFuzzyWord(text, EXPELLIARMUS_TARGETS);
+  }
+
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
@@ -270,6 +283,7 @@
     if (isConfringoPhrase(text)) { castConfringo(); return true; }
     if (isBombardaPhrase(text)) { castBombarda(); return true; }
     if (isAvadaPhrase(text)) { castAvada(); return true; }
+    if (isExpelliarmusPhrase(text)) { castExpelliarmus(); return true; }
     return false;
   }
 
@@ -300,6 +314,7 @@
         if (isConfringoPhrase(heard)) { castConfringo(); continue; }
         if (isBombardaPhrase(heard)) { castBombarda(); continue; }
         if (isAvadaPhrase(heard)) { castAvada(); continue; }
+        if (isExpelliarmusPhrase(heard)) { castExpelliarmus(); continue; }
       }
     };
     rec.onend = function () {
@@ -326,7 +341,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, or “Avada Kedavra”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, or “Expelliarmus”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -446,7 +461,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, or “Avada Kedavra”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, “Avada Kedavra”, or “Expelliarmus”.';
         } else {
           els.input.value = '';
         }
@@ -518,6 +533,13 @@
         spellAvada.addEventListener('click', castAvada);
         spellAvada.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castAvada(); }
+        });
+      }
+      var spellExpelliarmus = document.getElementById('spell-expelliarmus');
+      if (spellExpelliarmus) {
+        spellExpelliarmus.addEventListener('click', castExpelliarmus);
+        spellExpelliarmus.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castExpelliarmus(); }
         });
       }
 
