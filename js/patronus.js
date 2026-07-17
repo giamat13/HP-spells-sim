@@ -8,6 +8,7 @@
   // run duration = path length / animal speed, so each animal has its own pace.
   var T_BURST = 0.9, T_SWIRL_END = 3.4, T_FORM_END = 6.6;
   var DRIFT_MAX = 8;    // how far the mouse can steer the running Patronus off its path
+  var STEER_FACE = 0.9; // how much the steered direction bends the facing away from the path tangent
 
   function smooth(a, b, x) {
     var t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -324,7 +325,16 @@
         path.getPointAt(Math.min(u, 0.999), v1);       // origin
         v1.x += offset.x; v1.z += offset.z;             // mouse-steered drift off the base path
         path.getTangentAt(Math.min(u, 0.999), v2);     // facing
-        v2.y *= 0.35; v2.normalize();
+        v2.y *= 0.35;
+        // lean the facing toward wherever the drift is steering, not just the base path tangent
+        var errX = desired.x - offset.x, errZ = desired.z - offset.z;
+        var errLen = Math.sqrt(errX * errX + errZ * errZ);
+        if (errLen > 0.001) {
+          var steerAmt = Math.min(1, errLen / DRIFT_MAX) * STEER_FACE;
+          v2.x += (errX / errLen) * steerAmt;
+          v2.z += (errZ / errLen) * steerAmt;
+        }
+        v2.normalize();
         quat.setFromUnitVectors(FWD, v2);
         // Ease into the heading rather than snapping to the tangent, and lean
         // into the turn — a body carries momentum through a corner.

@@ -299,6 +299,7 @@
       AudioSys.init();
       if (spellId === 'patronus') {
         if (patronus.cast(payload)) {
+          if (walk.locked) document.exitPointerLock();
           UI.setCasting(true);
           UI.recordCast(payload.id);
         }
