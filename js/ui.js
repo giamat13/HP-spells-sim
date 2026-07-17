@@ -115,6 +115,10 @@
     if (hooks.onCast) hooks.onCast('bombarda', { maxima: true });
   }
 
+  function castAvada() {
+    if (hooks.onCast) hooks.onCast('avada', null);
+  }
+
   // "Expecto Patronum" is long and Latin, so both ASR and unsure speakers
   // mangle the first word constantly (aspecto, aspeto, ekspecto...); accept
   // any of those plus a bare "patro-" fragment for the second word.
@@ -213,6 +217,14 @@
     return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
   }
 
+  // "Avada Kedavra" — both words are distinctive enough that just requiring
+  // each somewhere in the phrase (in either order) is plenty forgiving.
+  var AVADA_RE = /\bavada\b/i;
+  var KEDAVRA_RE = /\bk[ae]davr[ae]\b/i;
+  function isAvadaPhrase(text) {
+    return AVADA_RE.test(text) && KEDAVRA_RE.test(text);
+  }
+
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
@@ -223,6 +235,7 @@
     if (isAccioPhrase(text)) { castAccio(); return true; }
     if (BOMBARDA_MAXIMA_RE.test(text)) { castBombardaMaxima(); return true; }
     if (isBombardaPhrase(text)) { castBombarda(); return true; }
+    if (isAvadaPhrase(text)) { castAvada(); return true; }
     return false;
   }
 
@@ -250,6 +263,7 @@
         if (isAccioPhrase(heard)) { castAccio(); continue; }
         if (BOMBARDA_MAXIMA_RE.test(heard)) { castBombardaMaxima(); continue; }
         if (isBombardaPhrase(heard)) { castBombarda(); continue; }
+        if (isAvadaPhrase(heard)) { castAvada(); continue; }
       }
     };
     rec.onend = function () {
@@ -276,7 +290,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, or “Bombarda Maxima”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, “Bombarda Maxima”, or “Avada Kedavra”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -396,7 +410,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, or “Bombarda”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Bombarda”, or “Avada Kedavra”.';
         } else {
           els.input.value = '';
         }
@@ -447,6 +461,13 @@
         spellBombarda.addEventListener('click', castBombarda);
         spellBombarda.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castBombarda(); }
+        });
+      }
+      var spellAvada = document.getElementById('spell-avada');
+      if (spellAvada) {
+        spellAvada.addEventListener('click', castAvada);
+        spellAvada.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castAvada(); }
         });
       }
 

@@ -43,6 +43,7 @@
   var accio = Accio.create(scene, forest);
   var bombarda = Bombarda.create(scene, forest);
   var zombies = Zombies.create(scene, forest, bombarda, incendio);
+  var avada = Avada.create(scene, zombies);
 
   /* ---------- wand (held at the edge of view) ---------- */
 
@@ -167,6 +168,8 @@
   accio.getCameraPose = getCameraPose;
   bombarda.getCameraPose = getCameraPose;
   zombies.getCameraPose = getCameraPose;
+  avada.getCameraPose = getCameraPose;
+  avada.getWandTip = getWandTip;
 
   var zombieHitCaptionTimer = null;
   zombies.onPlayerHealth = function (hp, max) { UI.setPlayerHealth(hp, max); };
@@ -174,6 +177,16 @@
     UI.caption('A curse strikes you!');
     clearTimeout(zombieHitCaptionTimer);
     zombieHitCaptionTimer = setTimeout(function () { UI.caption(null); }, 900);
+  };
+
+  var avadaCaptionTimer = null;
+  avada.onPhase = function (state) {
+    var text = null, life = 1400;
+    if (state === 'cast') { text = 'Avada Kedavra!'; AudioSys.avadaCurse(); }
+    else if (state === 'none') { text = 'No enemy close enough.'; }
+    UI.caption(text);
+    clearTimeout(avadaCaptionTimer);
+    if (text) avadaCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- perspective (first-person / third-person) ---------- */
@@ -496,6 +509,8 @@
       } else if (spellId === 'bombarda') {
         bombardaMaximaFlag = !!(payload && payload.maxima);
         bombarda.cast(bombardaMaximaFlag);
+      } else if (spellId === 'avada') {
+        avada.cast();
       }
     },
     onCapture: capture,
@@ -523,7 +538,7 @@
   // small handle for testing/tinkering from the console
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
-    bombarda: bombarda, zombies: zombies,
+    bombarda: bombarda, zombies: zombies, avada: avada,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -542,6 +557,7 @@
     accio.update(t, dt);
     bombarda.update(t, dt);
     zombies.update(t, dt);
+    avada.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 

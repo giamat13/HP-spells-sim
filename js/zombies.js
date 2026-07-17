@@ -173,18 +173,38 @@
       z.mesh.visible = true;
     }
 
+    function killZombie(z) {
+      z.alive = false;
+      z.fallT = 0;
+      if (Z.playerHP < Z.playerMaxHP) {
+        Z.playerHP = Math.min(Z.playerMaxHP, Z.playerHP + KILL_HEAL);
+        Z.onPlayerHealth(Z.playerHP, Z.playerMaxHP);
+      }
+    }
+
     function damage(z, amount) {
       if (!z.alive) return;
       z.hp -= amount;
-      if (z.hp <= 0) {
-        z.alive = false;
-        z.fallT = 0;
-        if (Z.playerHP < Z.playerMaxHP) {
-          Z.playerHP = Math.min(Z.playerMaxHP, Z.playerHP + KILL_HEAL);
-          Z.onPlayerHealth(Z.playerHP, Z.playerMaxHP);
-        }
-      }
+      if (z.hp <= 0) killZombie(z);
     }
+
+    // Instantly kills the nearest living zombie to `fromPos` (within
+    // `maxRange`, default unlimited) — used by Avada Kedavra. Returns the
+    // kill spot (torso height) for the beam to aim at, or null if none found.
+    Z.killNearest = function (fromPos, maxRange) {
+      var range = maxRange || Infinity, best = null, bestD = Infinity;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive) continue;
+        var d = z.pos.distanceTo(fromPos);
+        if (d <= range && d < bestD) { bestD = d; best = z; }
+      }
+      if (!best) return null;
+      var spot = best.pos.clone();
+      spot.y += 1.1;
+      killZombie(best);
+      return spot;
+    };
 
     function hitPlayer(dmg) {
       Z.playerHP = Math.max(0, Z.playerHP - dmg);

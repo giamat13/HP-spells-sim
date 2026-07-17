@@ -581,6 +581,32 @@
     rn.start(t); rn.stop(t + tail + 0.05);
   }
 
+  // Avada Kedavra: a cold, fast downward zap plus a hard noise crack.
+  function avadaCurse() {
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(1200, t);
+    o.frequency.exponentialRampToValueAtTime(80, t + 0.22);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    o.connect(g); out(g, 0.7, 0.5);
+    o.start(t); o.stop(t + 0.3);
+
+    var n = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(2600, t);
+    bp.frequency.exponentialRampToValueAtTime(600, t + 0.15);
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.14, t);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.18);
+    n.connect(bp); bp.connect(ng);
+    out(ng, 0.7, 0.45);
+    n.start(t); n.stop(t + 0.2);
+  }
+
   /* ---------- dementor weather ---------- */
 
   var rumbleGain = null;
@@ -680,6 +706,7 @@
       if (!ctx || muted) return { stop: function () {} };
       return animalLoop(a);
     },
-    setDementor: setDementor
+    setDementor: setDementor,
+    avadaCurse: function () { if (ctx && !muted) avadaCurse(); }
   };
 })();
