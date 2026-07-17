@@ -63,7 +63,6 @@
       // Enemies are candidates too, scored the same way as liftables, so
       // Accio can also summon a zombie into striking range.
       var zlist = A.zombies && A.zombies.list;
-      window.__accioDebug = { hasAzombies: !!A.zombies, zlistLen: zlist ? zlist.length : null };
       if (zlist) {
         for (var j = 0; j < zlist.length; j++) {
           var z = zlist[j];
