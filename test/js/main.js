@@ -48,6 +48,7 @@
   incendio.zombies = zombies;
   depulso.zombies = zombies;
   depulso.incendio = incendio;
+  accio.zombies = zombies;
 
   /* ---------- wand (held at the edge of view) ---------- */
 
