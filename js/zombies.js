@@ -12,8 +12,9 @@
   var FIRE_RADIUS = 1.7, FIRE_DPS = 22;
   var BOMBARDA_DAMAGE = 45, BOMBARDA_MAXIMA_DAMAGE = 100;
   var ATTACK_RANGE = 17, ATTACK_MIN_CD = 4, ATTACK_MAX_CD = 7.5;
-  var ATTACK_DMG_MIN = 8, ATTACK_DMG_MAX = 15, CURSE_TRAVEL_TIME = 0.55;
+  var ATTACK_DMG_MIN = 4, ATTACK_DMG_MAX = 7, CURSE_TRAVEL_TIME = 0.55;
   var PLAYER_MAX_HP = 100, RESPAWN_MIN = 9, RESPAWN_MAX = 16, FALL_TIME = 0.6;
+  var KILL_HEAL = 15;
 
   function rand(a, b) { return a + Math.random() * (b - a); }
 
@@ -175,7 +176,14 @@
     function damage(z, amount) {
       if (!z.alive) return;
       z.hp -= amount;
-      if (z.hp <= 0) { z.alive = false; z.fallT = 0; }
+      if (z.hp <= 0) {
+        z.alive = false;
+        z.fallT = 0;
+        if (Z.playerHP < Z.playerMaxHP) {
+          Z.playerHP = Math.min(Z.playerMaxHP, Z.playerHP + KILL_HEAL);
+          Z.onPlayerHealth(Z.playerHP, Z.playerMaxHP);
+        }
+      }
     }
 
     function hitPlayer(dmg) {

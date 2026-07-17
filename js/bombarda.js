@@ -224,7 +224,8 @@
     }
 
     B.cast = function (maxima) {
-      if (B.active) return false;
+      // No cooldown/lock: casting again just restarts the blast immediately,
+      // so the player can spam it freely (e.g. to kill zombies faster).
       var pose = B.getCameraPose();
       computeTarget(pose, basePos);
       profile = maxima ? MAXIMA : NORMAL;
