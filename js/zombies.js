@@ -12,6 +12,7 @@
   var FIRE_RADIUS = 1.7, FIRE_DPS = 22;
   var BOMBARDA_DAMAGE = 45, BOMBARDA_MAXIMA_DAMAGE = 100;
   var EXPELLIARMUS_DAMAGE = MAX_HP / 5;
+  var STUN_DAMAGE = MAX_HP / 10;
   var ATTACK_RANGE = 17, ATTACK_MIN_CD = 4, ATTACK_MAX_CD = 7.5;
   var ATTACK_DMG_MIN = 4, ATTACK_DMG_MAX = 7, CURSE_TRAVEL_TIME = 0.55;
   var PLAYER_MAX_HP = 100, RESPAWN_MIN = 9, RESPAWN_MAX = 16, FALL_TIME = 0.6;
@@ -76,6 +77,8 @@
     }
     var armL = arm(-1), armR = arm(1);
     g.add(armL, armR);
+    g.userData.armL = armL;
+    g.userData.armR = armR;
 
     var wand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.022, 0.42, 6), mats.wand);
     wand.position.set(0, -0.58, 0.04);
@@ -148,7 +151,7 @@
         yaw: rand(0, Math.PI * 2),
         target: null, waitT: rand(0, 2),
         attackCd: rand(ATTACK_MIN_CD, ATTACK_MAX_CD),
-        fallT: 0, respawnT: 0, pulled: false
+        fallT: 0, respawnT: 0, pulled: false, stunned: null, stunT: 0
       };
       mesh.position.copy(z.pos);
       mesh.rotation.y = z.yaw;
@@ -175,6 +178,9 @@
       z.attackCd = rand(ATTACK_MIN_CD, ATTACK_MAX_CD);
       z.pulled = false;
       z.disarmed = false;
+      z.stunned = null;
+      z.stunT = 0;
+      resetArmPose(z);
       z.mesh.userData.wand.visible = true;
       z.mesh.visible = true;
     }
@@ -192,6 +198,38 @@
       if (!z.alive) return;
       z.hp -= amount;
       if (z.hp <= 0) killZombie(z);
+    }
+
+    // Arms hang at this rest pose by default (see arm() above); Petrificus
+    // Totalus lerps them out to a horizontal T-pose instead of the normal
+    // collapse-to-the-ground fall.
+    var ARM_REST_X = 0.3, ARM_REST_Z = 0.15;
+    function poseArmsTPose(z, f) {
+      var armL = z.mesh.userData.armL, armR = z.mesh.userData.armR;
+      armR.rotation.z = -ARM_REST_Z + (Math.PI / 2 + ARM_REST_Z) * f;
+      armR.rotation.x = ARM_REST_X * (1 - f);
+      armL.rotation.z = ARM_REST_Z + (-Math.PI / 2 - ARM_REST_Z) * f;
+      armL.rotation.x = ARM_REST_X * (1 - f);
+    }
+    function resetArmPose(z) {
+      z.mesh.userData.armR.rotation.set(ARM_REST_X, 0, -ARM_REST_Z);
+      z.mesh.userData.armL.rotation.set(ARM_REST_X, 0, ARM_REST_Z);
+    }
+
+    // Knocks a living zombie down for a bit of chip damage — it stays put
+    // and alive (not vanished/respawned like a real kill) and never gets
+    // back up. `kind` is 'tpose' for Petrificus Totalus or 'fall' for
+    // Stupefy's normal collapse. Used by Stupefy and Petrificus Totalus.
+    function stunZombie(z, kind, dmg) {
+      if (!z.alive || z.stunned) return null;
+      damage(z, dmg);
+      if (z.alive) {
+        z.stunned = kind;
+        z.stunT = 0;
+      }
+      var spot = z.pos.clone();
+      spot.y += 1.1;
+      return spot;
     }
 
     // Instantly kills the nearest living zombie to `fromPos` (within
@@ -266,6 +304,30 @@
       var spot = best.pos.clone();
       spot.y += 1.1;
       return spot;
+    };
+
+    // Stuns the nearest living, not-already-stunned zombie to `fromPos`
+    // (within `maxRange`, optionally restricted to a forward-facing cone) —
+    // used by Stupefy (`kind` 'fall': normal collapse) and Petrificus
+    // Totalus (`kind` 'tpose': frozen arms-out). Deals a bit of chip damage
+    // and knocks the zombie down in place; it stays alive and never gets
+    // back up.
+    Z.stunNearest = function (fromPos, maxRange, facing, kind) {
+      var range = maxRange || Infinity, best = null, bestD = Infinity;
+      for (var i = 0; i < list.length; i++) {
+        var z = list[i];
+        if (!z.alive || z.stunned) continue;
+        tmpToTarget.subVectors(z.pos, fromPos);
+        var d = tmpToTarget.length();
+        if (d > range) continue;
+        if (facing && d > 0.01) {
+          tmpToTarget.multiplyScalar(1 / d);
+          if (tmpToTarget.dot(facing) < 0.35) continue;
+        }
+        if (d < bestD) { bestD = d; best = z; }
+      }
+      if (!best) return null;
+      return stunZombie(best, kind, STUN_DAMAGE);
     };
 
     // Damages the nearest living zombie within `radius` of `pos` by a flat
@@ -370,9 +432,21 @@
         }
         if (!z.alive) continue;
 
+        // Stupefy/Petrificus Totalus: frozen in place, animates into its
+        // pose once and then just stays down — no wandering, no attacking,
+        // no getting back up.
+        if (z.stunned) {
+          if (z.stunT < FALL_TIME) {
+            z.stunT += dt;
+            var sf = Math.min(1, z.stunT / FALL_TIME);
+            z.mesh.rotation.x = sf * (Math.PI / 2);
+            if (z.stunned === 'tpose') poseArmsTPose(z, sf);
+          }
+        }
+
         // Wander within a leash around its spawn point — suspended while Accio
         // has it in the air, so the pull isn't fighting its own AI.
-        if (!z.pulled) {
+        if (!z.pulled && !z.stunned) {
           z.waitT -= dt;
           if (!z.target) {
             if (z.waitT <= 0) pickTarget(z);
@@ -408,7 +482,7 @@
 
         // Curse attack, on its own cooldown, only while enabled, in range,
         // and not disarmed (Expelliarmus).
-        if (Z.attackEnabled && !z.pulled && !z.disarmed) {
+        if (Z.attackEnabled && !z.pulled && !z.disarmed && !z.stunned) {
           z.attackCd -= dt;
           if (z.attackCd <= 0 && z.pos.distanceTo(pose.pos) <= ATTACK_RANGE) {
             fireCurse(z, pose.pos);

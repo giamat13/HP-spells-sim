@@ -46,6 +46,8 @@
   var zombies = Zombies.create(scene, forest, bombarda, incendio);
   var avada = Avada.create(scene, zombies);
   var expelliarmus = Expelliarmus.create(scene, zombies);
+  var stupefy = Stupefy.create(scene, zombies);
+  var petrificus = PetrificusTotalus.create(scene, zombies);
   incendio.zombies = zombies;
   depulso.zombies = zombies;
   depulso.incendio = incendio;
@@ -179,6 +181,10 @@
   avada.getWandTip = getWandTip;
   expelliarmus.getCameraPose = getCameraPose;
   expelliarmus.getWandTip = getWandTip;
+  stupefy.getCameraPose = getCameraPose;
+  stupefy.getWandTip = getWandTip;
+  petrificus.getCameraPose = getCameraPose;
+  petrificus.getWandTip = getWandTip;
 
   var zombieHitCaptionTimer = null;
   zombies.onPlayerHealth = function (hp, max) { UI.setPlayerHealth(hp, max); };
@@ -206,6 +212,26 @@
     UI.caption(text);
     clearTimeout(expelliarmusCaptionTimer);
     if (text) expelliarmusCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var stupefyCaptionTimer = null;
+  stupefy.onPhase = function (state) {
+    var text = null, life = 1400;
+    if (state === 'cast') { text = 'Stupefy!'; AudioSys.stupefyZap(); }
+    else if (state === 'none') { text = 'No enemy close enough.'; }
+    UI.caption(text);
+    clearTimeout(stupefyCaptionTimer);
+    if (text) stupefyCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var petrificusCaptionTimer = null;
+  petrificus.onPhase = function (state) {
+    var text = null, life = 1400;
+    if (state === 'cast') { text = 'Petrificus Totalus!'; AudioSys.petrificusZap(); }
+    else if (state === 'none') { text = 'No enemy close enough.'; }
+    UI.caption(text);
+    clearTimeout(petrificusCaptionTimer);
+    if (text) petrificusCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- perspective (first-person / third-person) ---------- */
@@ -375,6 +401,14 @@
       // so it needs to work while walking/pointer-locked.
       AudioSys.init();
       expelliarmus.cast();
+    } else if (ev.code === 'KeyH') {
+      // Same reasoning as Avada's KeyF: Stupefy targets an enemy too, so it
+      // needs to work while walking/pointer-locked.
+      AudioSys.init();
+      stupefy.cast();
+    } else if (ev.code === 'KeyJ') {
+      AudioSys.init();
+      petrificus.cast();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -561,6 +595,10 @@
         avada.cast();
       } else if (spellId === 'expelliarmus') {
         expelliarmus.cast();
+      } else if (spellId === 'stupefy') {
+        stupefy.cast();
+      } else if (spellId === 'petrificus') {
+        petrificus.cast();
       }
     },
     onCapture: capture,
@@ -589,6 +627,7 @@
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
     depulso: depulso, bombarda: bombarda, zombies: zombies, avada: avada, expelliarmus: expelliarmus,
+    stupefy: stupefy, petrificus: petrificus,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -610,6 +649,8 @@
     zombies.update(t, dt);
     avada.update(t, dt);
     expelliarmus.update(t, dt);
+    stupefy.update(t, dt);
+    petrificus.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 

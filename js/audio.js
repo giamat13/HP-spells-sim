@@ -634,6 +634,58 @@
     n.start(t); n.stop(t + 0.16);
   }
 
+  // Stupefy: a punchy red-jet zap — lower and blunter than Expelliarmus.
+  function stupefyZap() {
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.setValueAtTime(320, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.16);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    o.connect(g); out(g, 0.7, 0.5);
+    o.start(t); o.stop(t + 0.22);
+
+    var n = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 1.3;
+    bp.frequency.setValueAtTime(1000, t);
+    bp.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.13, t);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.15);
+    n.connect(bp); bp.connect(ng);
+    out(ng, 0.7, 0.5);
+    n.start(t); n.stop(t + 0.16);
+  }
+
+  // Petrificus Totalus: a stiff, ringing crack — the body locking rigid.
+  function petrificusZap() {
+    var t = now();
+    var o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(700, t);
+    o.frequency.exponentialRampToValueAtTime(1900, t + 0.08);
+    o.frequency.exponentialRampToValueAtTime(1200, t + 0.2);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.13, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g); out(g, 0.65, 0.55);
+    o.start(t); o.stop(t + 0.32);
+
+    var n = noiseSource(false);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.Q.value = 2.4;
+    bp.frequency.value = 2400;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.11, t);
+    ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.1);
+    n.connect(bp); bp.connect(ng);
+    out(ng, 0.7, 0.5);
+    n.start(t); n.stop(t + 0.11);
+  }
+
   /* ---------- dementor weather ---------- */
 
   var rumbleGain = null;
@@ -735,6 +787,8 @@
     },
     setDementor: setDementor,
     avadaCurse: function () { if (ctx && !muted) avadaCurse(); },
-    expelliarmusZap: function () { if (ctx && !muted) expelliarmusZap(); }
+    expelliarmusZap: function () { if (ctx && !muted) expelliarmusZap(); },
+    stupefyZap: function () { if (ctx && !muted) stupefyZap(); },
+    petrificusZap: function () { if (ctx && !muted) petrificusZap(); }
   };
 })();

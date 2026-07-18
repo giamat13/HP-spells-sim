@@ -127,6 +127,14 @@
     if (hooks.onCast) hooks.onCast('expelliarmus', null);
   }
 
+  function castStupefy() {
+    if (hooks.onCast) hooks.onCast('stupefy', null);
+  }
+
+  function castPetrificus() {
+    if (hooks.onCast) hooks.onCast('petrificus', null);
+  }
+
   // Confringo is presented as its own spell, but under the hood it's just
   // Bombarda's blast fired with the "confringo" caption and no Maxima variant.
   function castConfringo() {
@@ -274,6 +282,27 @@
     return EXPELLIARMUS_RE.test(text) || phraseHasFuzzyWord(text, EXPELLIARMUS_TARGETS);
   }
 
+  // "Stupefy" is short and phonetic but still gets heard as "stupefai"/
+  // "stupify"/"stewpify" etc. — match the sound shape broadly plus a fuzzy
+  // fallback, same approach as Incendio/Accio above.
+  var STUPEFY_RE = /\bstu?p[ie]fy?\b/i;
+  var STUPEFY_TARGETS = ['stupefy', 'stupefai', 'stupify', 'stewpify', 'stoopify', 'stupefye', 'stupifai'];
+  function isStupefyPhrase(text) {
+    return STUPEFY_RE.test(text) || phraseHasFuzzyWord(text, STUPEFY_TARGETS);
+  }
+
+  // "Petrificus Totalus" is two long Latin-ish words, so like Expecto
+  // Patronum both get mangled — require a sound-shape/fuzzy match on each
+  // word independently rather than the exact phrase.
+  var PETRIFICUS_RE = /\bpetr?if[iy]c[au]s\b/i;
+  var TOTALUS_RE = /\btot[ae]l[ou]s\b/i;
+  var PETRIFICUS_TARGETS = ['petrificus', 'petrifikus', 'petrifycus', 'petrifikas', 'petrifecus'];
+  var TOTALUS_TARGETS = ['totalus', 'toetalus', 'totalos', 'totales', 'totallus'];
+  function isPetrificusPhrase(text) {
+    return (PETRIFICUS_RE.test(text) || phraseHasFuzzyWord(text, PETRIFICUS_TARGETS)) &&
+      (TOTALUS_RE.test(text) || phraseHasFuzzyWord(text, TOTALUS_TARGETS));
+  }
+
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
@@ -288,6 +317,8 @@
     if (isBombardaPhrase(text)) { castBombarda(); return true; }
     if (isAvadaPhrase(text)) { castAvada(); return true; }
     if (isExpelliarmusPhrase(text)) { castExpelliarmus(); return true; }
+    if (isPetrificusPhrase(text)) { castPetrificus(); return true; }
+    if (isStupefyPhrase(text)) { castStupefy(); return true; }
     return false;
   }
 
@@ -319,6 +350,8 @@
         if (isBombardaPhrase(heard)) { castBombarda(); continue; }
         if (isAvadaPhrase(heard)) { castAvada(); continue; }
         if (isExpelliarmusPhrase(heard)) { castExpelliarmus(); continue; }
+        if (isPetrificusPhrase(heard)) { castPetrificus(); continue; }
+        if (isStupefyPhrase(heard)) { castStupefy(); continue; }
       }
     };
     rec.onend = function () {
@@ -345,7 +378,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, or “Expelliarmus”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, or “Petrificus Totalus”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -465,7 +498,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, “Avada Kedavra”, or “Expelliarmus”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, or “Petrificus Totalus”.';
         } else {
           els.input.value = '';
         }
@@ -544,6 +577,20 @@
         spellExpelliarmus.addEventListener('click', castExpelliarmus);
         spellExpelliarmus.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castExpelliarmus(); }
+        });
+      }
+      var spellStupefy = document.getElementById('spell-stupefy');
+      if (spellStupefy) {
+        spellStupefy.addEventListener('click', castStupefy);
+        spellStupefy.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castStupefy(); }
+        });
+      }
+      var spellPetrificus = document.getElementById('spell-petrificus');
+      if (spellPetrificus) {
+        spellPetrificus.addEventListener('click', castPetrificus);
+        spellPetrificus.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castPetrificus(); }
         });
       }
 
