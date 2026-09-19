@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice Training – HP Spellbook</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎙 Voice Training</h1>
+    <p class="lead">Say a spell. You’ll see what it heard and how much of it each spell owns, judged from what’s been trained so far. If it’s wrong, pick the spell you meant and teach it. <a href="../index.html">← Back to the game</a></p>
+  </header>
+
+  <section>
+    <h2>1 · Say something</h2>
+    <div class="row">
+      <button class="primary" id="mic-btn">🎤 Listen</button>
+      <label class="btn" for="audio-file">📁 Upload a recording</label>
+      <input type="file" id="audio-file" accept="audio/*" class="hidden">
+      <button id="analyze-btn" disabled>▶ Recognize recording</button>
+    </div>
+    <audio id="audio-preview" controls class="hidden"></audio>
+    <input type="text" id="type-input" placeholder="Or type a phrase instead of saying it, then press Enter" autocomplete="off" spellcheck="false" style="margin-top:0.7rem">
+    <p class="note" style="margin-top:0.6rem">Works in Chrome or Edge, in English. Two things listen at once: speech recognition, which turns what you said into English words, and a recording of the sound itself, which is compared with what you already taught. The sound decides when you stopped talking, so the answer comes straight away. “Listen” keeps listening, so you can say several spells in a row. “Upload a recording” does the same with an audio file. The text box tries a phrase without speaking (words only).</p>
+    <p class="note hidden" id="route"></p>
+    <div id="status"></div>
+    <div id="live" class="hidden" style="margin-top:0.8rem">
+      <p class="note" id="live-heard"></p>
+      <div class="scores" id="live-dist"></div>
+    </div>
+  </section>
+
+  <section id="results-section" class="hidden">
+    <h2>2 · What it heard: correct it to train</h2>
+    <p class="big" id="tally"></p>
+    <div id="results"></div>
+  </section>
+
+  <section>
+    <h2>3 · Your training data <span id="dirty" class="hidden">● unsaved changes</span></h2>
+    <p class="note" id="base-info"></p>
+    <div id="data"></div>
+    <div class="row" style="margin-top:1rem">
+      <button id="save-btn">💾 Save in this browser</button>
+      <button id="download-btn">⬇ Download voice-training-data.js</button>
+      <label class="btn" for="import-file" title="Use your own voice-training-data.js as the starting point instead of the one on GitHub">📂 Load existing voice-training-data.js</label>
+      <input type="file" id="import-file" accept=".js,.json,text/javascript,application/json" class="hidden">
+      <button id="clear-btn">🗑 Clear browser data</button>
+    </div>
+    <p class="note" style="margin-top:0.7rem"><b>Save in this browser</b> keeps it in localStorage for this whole site (domain): the game on the same site and browser uses it right away, without reloading. Other visitors and other browsers are not affected.<br>
+    <b>Download</b> gives a file for the source code: the project owner (or anyone with a fork) replaces <code>js/voice-training-data.js</code> with it and commits, so every player benefits. It contains the phrases already in the source plus yours.<br>
+    <b>Load existing…</b> uses a <code>voice-training-data.js</code> you already have as the starting point instead. Without it, the starting point is the project’s latest <code>js/voice-training-data.js</code>, fetched from GitHub (the dashed chips), so you never start from scratch.</p>
+  </section>
+</main>
+
+<script src="../js/voice-training-data.js"></script>
+<script src="../js/voiceprint.js"></script>
+<script src="../js/voice.js"></script>
+<script src="recog.js"></script>
+<script src="training.js"></script>
+</body>
+</html>

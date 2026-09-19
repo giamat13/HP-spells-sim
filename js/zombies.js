@@ -12,7 +12,6 @@
   var FIRE_RADIUS = 1.7, FIRE_DPS = 22;
   var BOMBARDA_DAMAGE = 45, BOMBARDA_MAXIMA_DAMAGE = 100;
   var EXPELLIARMUS_DAMAGE = MAX_HP / 5;
-  var STUN_DAMAGE = MAX_HP / 10;
   var ATTACK_RANGE = 17, ATTACK_MIN_CD = 4, ATTACK_MAX_CD = 7.5;
   var ATTACK_DMG_MIN = 4, ATTACK_DMG_MAX = 7, CURSE_TRAVEL_TIME = 0.55;
   var PLAYER_MAX_HP = 100, RESPAWN_MIN = 9, RESPAWN_MAX = 16, FALL_TIME = 0.6;
@@ -216,17 +215,14 @@
       z.mesh.userData.armL.rotation.set(ARM_REST_X, 0, ARM_REST_Z);
     }
 
-    // Knocks a living zombie down for a bit of chip damage — it stays put
+    // Knocks a living zombie down without hurting it — it stays put
     // and alive (not vanished/respawned like a real kill) and never gets
     // back up. `kind` is 'tpose' for Petrificus Totalus or 'fall' for
     // Stupefy's normal collapse. Used by Stupefy and Petrificus Totalus.
-    function stunZombie(z, kind, dmg) {
+    function stunZombie(z, kind) {
       if (!z.alive || z.stunned) return null;
-      damage(z, dmg);
-      if (z.alive) {
-        z.stunned = kind;
-        z.stunT = 0;
-      }
+      z.stunned = kind;
+      z.stunT = 0;
       var spot = z.pos.clone();
       spot.y += 1.1;
       return spot;
@@ -309,9 +305,8 @@
     // Stuns the nearest living, not-already-stunned zombie to `fromPos`
     // (within `maxRange`, optionally restricted to a forward-facing cone) —
     // used by Stupefy (`kind` 'fall': normal collapse) and Petrificus
-    // Totalus (`kind` 'tpose': frozen arms-out). Deals a bit of chip damage
-    // and knocks the zombie down in place; it stays alive and never gets
-    // back up.
+    // Totalus (`kind` 'tpose': frozen arms-out). Knocks the zombie down in
+    // place without hurting it; it stays alive and never gets back up.
     Z.stunNearest = function (fromPos, maxRange, facing, kind) {
       var range = maxRange || Infinity, best = null, bestD = Infinity;
       for (var i = 0; i < list.length; i++) {
@@ -327,7 +322,7 @@
         if (d < bestD) { bestD = d; best = z; }
       }
       if (!best) return null;
-      return stunZombie(best, kind, STUN_DAMAGE);
+      return stunZombie(best, kind);
     };
 
     // Damages the nearest living zombie within `radius` of `pos` by a flat
