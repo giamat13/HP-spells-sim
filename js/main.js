@@ -48,6 +48,7 @@
   var expelliarmus = Expelliarmus.create(scene, zombies);
   var stupefy = Stupefy.create(scene, zombies);
   var petrificus = PetrificusTotalus.create(scene, zombies);
+  var episkey = Episkey.create(scene, zombies);
   incendio.zombies = zombies;
   depulso.zombies = zombies;
   depulso.incendio = incendio;
@@ -185,6 +186,7 @@
   stupefy.getWandTip = getWandTip;
   petrificus.getCameraPose = getCameraPose;
   petrificus.getWandTip = getWandTip;
+  episkey.getCameraPose = getCameraPose;
 
   var zombieHitCaptionTimer = null;
   zombies.onPlayerHealth = function (hp, max) { UI.setPlayerHealth(hp, max); };
@@ -232,6 +234,16 @@
     UI.caption(text);
     clearTimeout(petrificusCaptionTimer);
     if (text) petrificusCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
+  };
+
+  var episkeyCaptionTimer = null;
+  episkey.onPhase = function (state) {
+    var text = null, life = 1400;
+    if (state === 'cast') { text = 'Episkey!'; AudioSys.episkeyChime(); }
+    else if (state === 'full') { text = 'You are already in perfect health.'; }
+    UI.caption(text);
+    clearTimeout(episkeyCaptionTimer);
+    if (text) episkeyCaptionTimer = setTimeout(function () { UI.caption(null); }, life);
   };
 
   /* ---------- perspective (first-person / third-person) ---------- */
@@ -409,6 +421,11 @@
     } else if (ev.code === 'KeyJ') {
       AudioSys.init();
       petrificus.cast();
+    } else if (ev.code === 'KeyK') {
+      // Episkey heals the player, so like the other spells it needs its own
+      // key while walking/pointer-locked.
+      AudioSys.init();
+      episkey.cast();
     }
   });
   window.addEventListener('keyup', function (ev) { keys[ev.code] = false; });
@@ -599,6 +616,8 @@
         stupefy.cast();
       } else if (spellId === 'petrificus') {
         petrificus.cast();
+      } else if (spellId === 'episkey') {
+        episkey.cast();
       }
     },
     onCapture: capture,
@@ -627,7 +646,7 @@
   window.HP = {
     patronus: patronus, lumos: lumos, leviosa: leviosa, incendio: incendio, accio: accio,
     depulso: depulso, bombarda: bombarda, zombies: zombies, avada: avada, expelliarmus: expelliarmus,
-    stupefy: stupefy, petrificus: petrificus,
+    stupefy: stupefy, petrificus: petrificus, episkey: episkey,
     forest: forest, quality: Q, isMobile: isMobile
   };
 
@@ -651,6 +670,7 @@
     expelliarmus.update(t, dt);
     stupefy.update(t, dt);
     petrificus.update(t, dt);
+    episkey.update(t, dt);
     UI.update(dt);
     updateCamera(t, dt);
 
