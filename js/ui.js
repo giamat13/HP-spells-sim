@@ -145,199 +145,93 @@
     if (hooks.onCast) hooks.onCast('confringo', null);
   }
 
-  // "Expecto Patronum" is long and Latin, so both ASR and unsure speakers
-  // mangle the first word constantly (aspecto, aspeto, ekspecto...); accept
-  // any of those plus a bare "patro-" fragment for the second word.
-  var EXPECTO_RE = /\b(expecto|ex?specto|aspecto|aspeto|aspeko|aspeku|ekspecto|especto)\b/i;
-  var PATRONUM_RE = /\bpatro/i;
-  function isPatronusPhrase(text) {
-    return EXPECTO_RE.test(text) && PATRONUM_RE.test(text);
-  }
-
-  // "Nox" and "knocks"/"Knox" are near-homophones, so speech recognition
-  // routinely mishears one for the other — accept the common variants.
-  var NOX_RE = /\b(nox|knox|knocks|noks)\b/i;
-  var LUMOS_MAXIMA_RE = /^\s*lumos\s*maxima\b/i;
-  var LUMOS_RE = /^\s*lumos\b/i;
-
-  // "Wingardium Leviosa" is long and invented, so ASR mangles it constantly.
-  // "Leviosa" alone is distinctive enough to accept on its own (with common
-  // misspellings/mishears); "Wingardium"-ish + any "levi" fragment also counts.
-  var LEVIOSA_WORD_RE = /\b(leviosa|leviosah|leviosaa|leviosar|libiosa)\b/i;
-  var WINGARDIUM_RE = /\b([wv]ingardium|[wv]ingardian|[wv]ing\s*guardian|when\s*guardian|[wv]ing\s*gardenia)\b/i;
-  // Drawn-out "leviosaaaa" (extra trailing a's) doesn't satisfy the word
-  // boundary above, but it's still a cast of the spell — just said funny.
-  var LEVIOSA_DRAWN_OUT_RE = /levios+a{3,}/i;
-  function isLeviosaPhrase(text) {
-    return LEVIOSA_WORD_RE.test(text) || LEVIOSA_DRAWN_OUT_RE.test(text) ||
-      (WINGARDIUM_RE.test(text) && /levi/i.test(text));
-  }
-
-  // "Incendio" is short and phonetic, but ASR (and non-native pronunciation)
-  // still softens or swaps the middle consonant a lot — match the sound
-  // pattern (in + c/s/z + en + d/t + i/e + o) instead of a fixed spelling.
-  var INCENDIO_RE = /\bin\s*[csz]en?[dt]e?[iy]?o'?s?\b/i;
-  // "Accio" is short too, and gets heard/pronounced as "akio"/"atzio"/"axio"/
-  // "atio" etc. — match the a + k/t/ts/x + i/y + o sound shape broadly.
-  var ACCIO_RE = /\ba[ck]{1,2}[iy]o\b|\bat[sz]?[iy]o\b|\bax[iy]o\b|\bas[iy]o\b/i;
-  // "Depulso" gets heard/pronounced as "depulso"/"depulzo"/"depolso"/"dupulso"
-  // etc. — match the d(e/i) + p + u/o + l + s/z + o sound shape broadly.
-  var DEPULSO_RE = /\bd[ei]?\s*p[uo]ls[oe]\b/i;
-  // "Confringo" is another long-ish Latin-sounding word ASR mangles — match the
-  // con + f/v + r + i/e + n + g/k + o sound shape broadly.
-  var CONFRINGO_RE = /\bcon?[fv]r[ie]n[gk]o\b/i;
-
-  // Fallback fuzzy matcher for whenever the regex sound-shapes above still
-  // miss a mis-hearing entirely (English ASR forcing the word toward some
-  // unrelated dictionary word). Same idea as the Expecto Patronum handling —
-  // accept more than one exact spelling — just done generically: compare
-  // each spoken word against a short list of known-close spellings and
-  // allow a small edit-distance tolerance instead of hand-writing every
-  // variant as its own regex branch.
-  function levenshtein(a, b) {
-    var m = a.length, n = b.length;
-    if (!m) return n;
-    if (!n) return m;
-    var row = new Array(n + 1);
-    for (var j = 0; j <= n; j++) row[j] = j;
-    for (var i = 1; i <= m; i++) {
-      var prev = row[0];
-      row[0] = i;
-      for (j = 1; j <= n; j++) {
-        var tmp = row[j];
-        row[j] = Math.min(
-          row[j] + 1,
-          row[j - 1] + 1,
-          prev + (a[i - 1] === b[j - 1] ? 0 : 1)
-        );
-        prev = tmp;
-      }
+  // Maps an identified spell id (see voice.js) to its cast.
+  function castById(id) {
+    switch (id) {
+      case 'patronus': castPatronus(); break;
+      case 'leviosa': castLeviosa(); break;
+      case 'nox': castLumosOff(); break;
+      case 'lumos-maxima': castLumosMaxima(); break;
+      case 'lumos': castLumosOn(); break;
+      case 'incendio': castIncendio(); break;
+      case 'accio': castAccio(); break;
+      case 'depulso': castDepulso(); break;
+      case 'bombarda-maxima': castBombardaMaxima(); break;
+      case 'confringo': castConfringo(); break;
+      case 'bombarda': castBombarda(); break;
+      case 'avada': castAvada(); break;
+      case 'expelliarmus': castExpelliarmus(); break;
+      case 'petrificus': castPetrificus(); break;
+      case 'stupefy': castStupefy(); break;
+      case 'episkey': castEpiskey(); break;
     }
-    return row[n];
-  }
-  function wordCloseTo(word, target) {
-    var maxDist = target.length <= 4 ? 1 : (target.length <= 6 ? 2 : 3);
-    return levenshtein(word, target) <= maxDist;
-  }
-  function phraseHasFuzzyWord(text, targets) {
-    var words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
-    for (var i = 0; i < words.length; i++) {
-      if (words[i].length < 3) continue;
-      for (var j = 0; j < targets.length; j++) {
-        if (wordCloseTo(words[i], targets[j])) return true;
-      }
-    }
-    return false;
   }
 
-  var INCENDIO_TARGETS = ['incendio', 'incendo', 'encendio', 'insendio', 'inzendio', 'incendia'];
-  var ACCIO_TARGETS = ['accio', 'akio', 'atio', 'atzio', 'axio', 'asio', 'atsio', 'ackio'];
-  var DEPULSO_TARGETS = ['depulso', 'depulzo', 'depolso', 'dupulso', 'depulsa', 'depuso'];
-  var BOMBARDA_TARGETS = ['bombarda', 'bombardo', 'bambarda', 'bombardia', 'bombaria'];
-  var CONFRINGO_TARGETS = ['confringo', 'confringgo', 'confrengo', 'confrigo', 'confrinko'];
-
-  function isIncendioPhrase(text) {
-    return INCENDIO_RE.test(text) || phraseHasFuzzyWord(text, INCENDIO_TARGETS);
-  }
-  function isAccioPhrase(text) {
-    return ACCIO_RE.test(text) || phraseHasFuzzyWord(text, ACCIO_TARGETS);
-  }
-  function isDepulsoPhrase(text) {
-    return DEPULSO_RE.test(text) || phraseHasFuzzyWord(text, DEPULSO_TARGETS);
-  }
-
-  // "Bombarda Maxima" must be checked before plain "Bombarda", the same way
-  // Lumos Maxima is checked before plain Lumos.
-  var BOMBARDA_MAXIMA_RE = /^\s*bombarda\s*maxima\b/i;
-  var BOMBARDA_RE = /\bbombarda\b/i;
-  function isBombardaPhrase(text) {
-    return BOMBARDA_RE.test(text) || phraseHasFuzzyWord(text, BOMBARDA_TARGETS);
-  }
-  function isConfringoPhrase(text) {
-    return CONFRINGO_RE.test(text) || phraseHasFuzzyWord(text, CONFRINGO_TARGETS);
-  }
-
-  // "Avada Kedavra" — English ASR almost never returns both words cleanly;
-  // it collapses the phrase into things like "abracadabra", "a cadaver",
-  // "had a cadaver", "of other cadaver". So instead of requiring both words,
-  // we trigger on the distinctive second-word sound ALONE — "kedavra" /
-  // "cadaver" / "cadabra" isn't close to any other spell here — plus the
-  // whole-phrase mishears ("abracadabra"). The "avada"/"cadaver" combo also
-  // still works when ASR does get both.
-  var KEDAVRA_RE = /\b(k[ae]d[ae]?vr?[ae]|cadav(er|re|ra)|cadabra|kadabra)\b/i;
-  var ABRACADABRA_RE = /\babra\s*cadabra\b/i;
-  var KEDAVRA_TARGETS = ['kedavra', 'kedavera', 'kadavra', 'kadabra', 'cadabra',
-    'kedabra', 'kadavera', 'cadaver', 'cadavre', 'cadavera'];
-  function isAvadaPhrase(text) {
-    return KEDAVRA_RE.test(text) || ABRACADABRA_RE.test(text) ||
-      phraseHasFuzzyWord(text, KEDAVRA_TARGETS);
-  }
-
-  // "Expelliarmus" is long and Latin like Expecto Patronum, so ASR mangles
-  // it heavily and often splits it into separate words ("expel", "arm us").
-  // Match the sound shape broadly (allowing spaces between the syllables and
-  // either vowel on either end) plus a fuzzy word-list fallback for whenever
-  // ASR mashes it into one unrecognizable blob.
-  var EXPELLIARMUS_RE = /\bex\s*p[ae]l+i?\s*a?r?m\s*[ueoa]s?\b/i;
-  var EXPELLIARMUS_TARGETS = ['expelliarmus', 'expeliarmus', 'expeliarmous',
-    'expelliarmous', 'expelarmus', 'expeliarmas', 'expelearmus', 'expeliarmos',
-    'expiliarmus', 'expelyarmus', 'expelliarmas', 'expelliarmos', 'xpelliarmus'];
-  function isExpelliarmusPhrase(text) {
-    return EXPELLIARMUS_RE.test(text) || phraseHasFuzzyWord(text, EXPELLIARMUS_TARGETS);
-  }
-
-  // "Stupefy" is short and phonetic but still gets heard as "stupefai"/
-  // "stupify"/"stewpify" etc. — match the sound shape broadly plus a fuzzy
-  // fallback, same approach as Incendio/Accio above.
-  var STUPEFY_RE = /\bstu?p[ie]fy?\b/i;
-  var STUPEFY_TARGETS = ['stupefy', 'stupefai', 'stupify', 'stewpify', 'stoopify', 'stupefye', 'stupifai'];
-  function isStupefyPhrase(text) {
-    return STUPEFY_RE.test(text) || phraseHasFuzzyWord(text, STUPEFY_TARGETS);
-  }
-
-  // "Petrificus Totalus" is two long Latin-ish words, so like Expecto
-  // Patronum both get mangled — require a sound-shape/fuzzy match on each
-  // word independently rather than the exact phrase.
-  var PETRIFICUS_RE = /\bpetr?if[iy]c[au]s\b/i;
-  var TOTALUS_RE = /\btot[ae]l[ou]s\b/i;
-  var PETRIFICUS_TARGETS = ['petrificus', 'petrifikus', 'petrifycus', 'petrifikas', 'petrifecus'];
-  var TOTALUS_TARGETS = ['totalus', 'toetalus', 'totalos', 'totales', 'totallus'];
-  function isPetrificusPhrase(text) {
-    return (PETRIFICUS_RE.test(text) || phraseHasFuzzyWord(text, PETRIFICUS_TARGETS)) &&
-      (TOTALUS_RE.test(text) || phraseHasFuzzyWord(text, TOTALUS_TARGETS));
-  }
-
-  // "Episkey" is short but ASR turns it into "episky"/"epi ski"/"a piskey";
-  // match the sound shape plus a fuzzy fallback.
-  var EPISKEY_RE = /\b[ea]?\s*p[ie]s?\s*sk(ey|ie|y|ee|i)\b/i;
-  var EPISKEY_TARGETS = ['episkey', 'episky', 'episkie', 'episkei', 'episkee', 'apiskey', 'ipiskey'];
-  function isEpiskeyPhrase(text) {
-    return EPISKEY_RE.test(text) || phraseHasFuzzyWord(text, EPISKEY_TARGETS);
-  }
-
+  // Word matching lives in voice.js (shared with the voice training page).
   function tryIncantation(text) {
-    if (isPatronusPhrase(text)) { castPatronus(); return true; }
-    if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
-    if (NOX_RE.test(text)) { castLumosOff(); return true; }
-    if (LUMOS_MAXIMA_RE.test(text)) { castLumosMaxima(); return true; }
-    if (LUMOS_RE.test(text)) { castLumosOn(); return true; }
-    if (isIncendioPhrase(text)) { castIncendio(); return true; }
-    if (isAccioPhrase(text)) { castAccio(); return true; }
-    if (isDepulsoPhrase(text)) { castDepulso(); return true; }
-    if (BOMBARDA_MAXIMA_RE.test(text)) { castBombardaMaxima(); return true; }
-    if (isConfringoPhrase(text)) { castConfringo(); return true; }
-    if (isBombardaPhrase(text)) { castBombarda(); return true; }
-    if (isAvadaPhrase(text)) { castAvada(); return true; }
-    if (isExpelliarmusPhrase(text)) { castExpelliarmus(); return true; }
-    if (isPetrificusPhrase(text)) { castPetrificus(); return true; }
-    if (isStupefyPhrase(text)) { castStupefy(); return true; }
-    if (isEpiskeyPhrase(text)) { castEpiskey(); return true; }
-    return false;
+    var id = Voice.identify(text);
+    if (!id) return false;
+    castById(id);
+    return true;
   }
 
   /* ---------- voice: always-on, self-restarting incantation listener ---------- */
 
-  var mic = { supported: false, active: false, wantOn: false };
+  // Two routes listen at once. Speech recognition gives the words, but only
+  // commits about a second after you stop talking, and mangles invented Latin.
+  // voiceprint.js listens to the sound itself, matches it against what was
+  // trained (training/index.html) and knows on its own when you stopped, so it
+  // casts far sooner. Whichever concludes first casts; the other is dropped for
+  // that utterance. With no trained recordings, or no microphone access, the
+  // words alone still drive everything exactly as before.
+  var mic = {
+    supported: false, active: false, wantOn: false,
+    sound: null,          // handle on the voiceprint microphone, when open
+    interim: '',          // latest partial transcript
+    interimAt: 0,         // when it arrived, to tell it apart from the last utterance
+    spokeAt: 0,           // when the current utterance began
+    suppress: 0           // final transcripts the sound route has already answered
+  };
+  var SOUND_WINDOW = 3000;
+
+  function printLibrary() {
+    return Voice.mergePrints(Voice.sourcePrints(), Voice.readLocalPrints());
+  }
+
+  // One conclusion from both routes, then cast it.
+  function castDecision(text, sims) {
+    var res = Voice.decide(text, sims);
+    devShow(text, sims, res);
+    if (res.id) castById(res.id);
+    return res;
+  }
+
+  function micStartSound() {
+    if (!window.Voiceprint || mic.sound) return;
+    Voiceprint.open({
+      onStart: function () { mic.spokeAt = Date.now(); },
+      onEnd: function (print) {
+        if (!mic.wantOn || !print) return;
+        // Only trust a partial transcript that arrived during this utterance:
+        // recognition lags, so an older one belongs to the previous spell.
+        var text = mic.interimAt >= mic.spokeAt ? mic.interim : '';
+        mic.interim = '';
+        var res = castDecision(text, Voiceprint.matchAll(print, printLibrary()));
+        if (!res.id) return;
+        // The recognizer will still deliver words for this one: ignore them.
+        mic.suppress++;
+        setTimeout(function () { if (mic.suppress > 0) mic.suppress--; }, SOUND_WINDOW);
+      }
+    }).then(function (h) {
+      if (!mic.wantOn) { h.close(); return; }
+      mic.sound = h;
+    }).catch(function () { mic.sound = null; });   // words only, as before
+  }
+
+  function micStopSound() {
+    if (mic.sound) { mic.sound.close(); mic.sound = null; }
+    mic.suppress = 0;
+  }
 
   function micStartRecognition() {
     if (!mic.supported || mic.active) return;
@@ -345,27 +239,18 @@
     var rec = new SR();
     rec.lang = 'en-US';
     rec.continuous = true;
-    rec.interimResults = false;
+    rec.interimResults = true;      // the sound route casts with whatever words exist by then
     rec.onresult = function (ev) {
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
-        if (!ev.results[i].isFinal) continue;
         var heard = ev.results[i][0].transcript;
-        if (isPatronusPhrase(heard)) { castPatronus(); continue; }
-        if (isLeviosaPhrase(heard)) { castLeviosa(); continue; }
-        if (NOX_RE.test(heard)) { castLumosOff(); continue; }
-        if (LUMOS_MAXIMA_RE.test(heard)) { castLumosMaxima(); continue; }
-        if (LUMOS_RE.test(heard)) { castLumosOn(); continue; }
-        if (isIncendioPhrase(heard)) { castIncendio(); continue; }
-        if (isAccioPhrase(heard)) { castAccio(); continue; }
-        if (isDepulsoPhrase(heard)) { castDepulso(); continue; }
-        if (BOMBARDA_MAXIMA_RE.test(heard)) { castBombardaMaxima(); continue; }
-        if (isConfringoPhrase(heard)) { castConfringo(); continue; }
-        if (isBombardaPhrase(heard)) { castBombarda(); continue; }
-        if (isAvadaPhrase(heard)) { castAvada(); continue; }
-        if (isExpelliarmusPhrase(heard)) { castExpelliarmus(); continue; }
-        if (isPetrificusPhrase(heard)) { castPetrificus(); continue; }
-        if (isStupefyPhrase(heard)) { castStupefy(); continue; }
-        if (isEpiskeyPhrase(heard)) { castEpiskey(); continue; }
+        if (!ev.results[i].isFinal) {
+          mic.interim = heard;
+          mic.interimAt = Date.now();
+          continue;
+        }
+        mic.interim = '';
+        if (mic.suppress > 0) { mic.suppress--; continue; }
+        castDecision(heard, null);
       }
     };
     rec.onend = function () {
@@ -376,6 +261,7 @@
     rec.onerror = function (ev) {
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
         mic.wantOn = false;
+        micStopSound();
         els.mic.title = 'Microphone access denied';
       }
       // other errors (no-speech, aborted, network) just fall through to onend and retry
@@ -392,10 +278,11 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, “Petrificus Totalus”, or “Episkey”';
+    els.mic.title = 'Always listening (words + trained sound) for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, “Petrificus Totalus”, or “Episkey”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
+      micStartSound();
     });
   }
 
@@ -403,6 +290,74 @@
     if (!mic.supported) return;
     mic.wantOn = true;
     micStartRecognition();
+    micStartSound();
+  }
+
+  /* ---------- DEV mode: how close was what you said to each spell ---------- */
+
+  var dev = { on: false };
+
+  function devRow(name, pct, cls) {
+    var row = document.createElement('div');
+    row.className = 'dev-row' + (cls ? ' ' + cls : '');
+    var n = document.createElement('span');
+    n.textContent = name;
+    var bar = document.createElement('span');
+    bar.className = 'dev-bar';
+    var fill = document.createElement('i');
+    fill.style.width = pct + '%';
+    bar.appendChild(fill);
+    var p = document.createElement('span');
+    p.className = 'dev-pct';
+    p.textContent = pct + '%';
+    row.appendChild(n); row.appendChild(bar); row.appendChild(p);
+    return row;
+  }
+
+  function devShow(heard, sims, res) {
+    if (!dev.on) return;
+    res = res || Voice.decide(heard, sims);
+    var panel = els.dev;
+    panel.textContent = '';
+    var h = document.createElement('div');
+    h.className = 'dev-heard';
+    h.textContent = 'Heard: \u201c' + String(heard || '').trim() + '\u201d' +
+      (sims ? '' : ' (words only)');
+    var m = document.createElement('div');
+    m.className = 'dev-match';
+    m.textContent = res.id
+      ? '\u2192 ' + Voice.spellById(res.id).name + ' (' + res.via + ')'
+      : '\u2192 no spell cast';
+    panel.appendChild(h);
+    panel.appendChild(m);
+    // Share of the utterance each spell owns, from the trained data.
+    Voice.distribution(heard, null, sims).forEach(function (s, i) {
+      panel.appendChild(devRow(s.name, s.share, (i === 0 ? 'top ' : '') + (s.id && s.id === res.id ? 'picked' : '')));
+    });
+  }
+
+  function setDev(on) {
+    dev.on = on;
+    els.dev.hidden = !on;
+    els.devBtn.textContent = '\uD83D\uDEE0 Dev mode: ' + (on ? 'on' : 'off');
+    if (on) {
+      els.dev.textContent = 'DEV: say a spell (mic must be on) to see how much of it each spell owns, per the trained data.';
+    }
+    try { localStorage.setItem('hp-dev', on ? '1' : '0'); } catch (e) {}
+  }
+
+  function setupDev() {
+    var on = /[?&]dev\b/.test(location.search);
+    try { if (localStorage.getItem('hp-dev') === '1') on = true; } catch (e) {}
+    setDev(on);
+    els.devBtn.addEventListener('click', function () { setDev(!dev.on); });
+    // ` (backtick) toggles it too, since the sidebar can't be clicked while walking.
+    window.addEventListener('keydown', function (ev) {
+      if (ev.code !== 'Backquote') return;
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      setDev(!dev.on);
+    });
   }
 
   /* ---------- pointer sparkles ---------- */
@@ -488,6 +443,8 @@
       els.mic = document.getElementById('mic-btn');
       els.sparkles = document.getElementById('sparkles');
       els.journal = document.getElementById('journal');
+      els.dev = document.getElementById('dev-panel');
+      els.devBtn = document.getElementById('dev-btn');
       els.journalStats = document.getElementById('journal-stats');
       els.caption = document.getElementById('caption');
       els.animalBtn = document.getElementById('animal-btn');
@@ -615,6 +572,8 @@
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castEpiskey(); }
         });
       }
+
+      setupDev();
 
       document.getElementById('journal-btn').addEventListener('click', openJournal);
       document.getElementById('journal-close').addEventListener('click', function () {
