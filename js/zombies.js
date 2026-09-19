@@ -345,6 +345,16 @@
       return best.pos.clone();
     };
 
+    // Restores player health (Episkey). Returns the amount actually healed:
+    // 0 if already full, or if the player is down and about to respawn.
+    Z.healPlayer = function (amount) {
+      if (Z.playerHP <= 0 || Z.playerHP >= Z.playerMaxHP) return 0;
+      var before = Z.playerHP;
+      Z.playerHP = Math.min(Z.playerMaxHP, Z.playerHP + amount);
+      Z.onPlayerHealth(Z.playerHP, Z.playerMaxHP);
+      return Z.playerHP - before;
+    };
+
     function hitPlayer(dmg) {
       Z.playerHP = Math.max(0, Z.playerHP - dmg);
       Z.onPlayerHit(dmg);

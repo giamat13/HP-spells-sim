@@ -686,6 +686,23 @@
     n.start(t); n.stop(t + 0.11);
   }
 
+  // Episkey: a soft, rising chime arpeggio, warm rather than sharp.
+  function episkeyChime() {
+    var t = now();
+    [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
+      var st = t + i * 0.07;
+      var o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.11, st + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, st + 0.6);
+      o.connect(g); out(g, 0.5, 0.7);
+      o.start(st); o.stop(st + 0.62);
+    });
+  }
+
   /* ---------- dementor weather ---------- */
 
   var rumbleGain = null;
@@ -789,6 +806,7 @@
     avadaCurse: function () { if (ctx && !muted) avadaCurse(); },
     expelliarmusZap: function () { if (ctx && !muted) expelliarmusZap(); },
     stupefyZap: function () { if (ctx && !muted) stupefyZap(); },
-    petrificusZap: function () { if (ctx && !muted) petrificusZap(); }
+    petrificusZap: function () { if (ctx && !muted) petrificusZap(); },
+    episkeyChime: function () { if (ctx && !muted) episkeyChime(); }
   };
 })();

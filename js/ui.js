@@ -135,6 +135,10 @@
     if (hooks.onCast) hooks.onCast('petrificus', null);
   }
 
+  function castEpiskey() {
+    if (hooks.onCast) hooks.onCast('episkey', null);
+  }
+
   // Confringo is presented as its own spell, but under the hood it's just
   // Bombarda's blast fired with the "confringo" caption and no Maxima variant.
   function castConfringo() {
@@ -303,6 +307,14 @@
       (TOTALUS_RE.test(text) || phraseHasFuzzyWord(text, TOTALUS_TARGETS));
   }
 
+  // "Episkey" is short but ASR turns it into "episky"/"epi ski"/"a piskey";
+  // match the sound shape plus a fuzzy fallback.
+  var EPISKEY_RE = /\b[ea]?\s*p[ie]s?\s*sk(ey|ie|y|ee|i)\b/i;
+  var EPISKEY_TARGETS = ['episkey', 'episky', 'episkie', 'episkei', 'episkee', 'apiskey', 'ipiskey'];
+  function isEpiskeyPhrase(text) {
+    return EPISKEY_RE.test(text) || phraseHasFuzzyWord(text, EPISKEY_TARGETS);
+  }
+
   function tryIncantation(text) {
     if (isPatronusPhrase(text)) { castPatronus(); return true; }
     if (isLeviosaPhrase(text)) { castLeviosa(); return true; }
@@ -319,6 +331,7 @@
     if (isExpelliarmusPhrase(text)) { castExpelliarmus(); return true; }
     if (isPetrificusPhrase(text)) { castPetrificus(); return true; }
     if (isStupefyPhrase(text)) { castStupefy(); return true; }
+    if (isEpiskeyPhrase(text)) { castEpiskey(); return true; }
     return false;
   }
 
@@ -352,6 +365,7 @@
         if (isExpelliarmusPhrase(heard)) { castExpelliarmus(); continue; }
         if (isPetrificusPhrase(heard)) { castPetrificus(); continue; }
         if (isStupefyPhrase(heard)) { castStupefy(); continue; }
+        if (isEpiskeyPhrase(heard)) { castEpiskey(); continue; }
       }
     };
     rec.onend = function () {
@@ -378,7 +392,7 @@
     if (!SR) return;
     mic.supported = true;
     els.mic.hidden = false;
-    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, or “Petrificus Totalus”';
+    els.mic.title = 'Always listening for “Expecto Patronum”, “Lumos”, “Lumos Maxima”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Bombarda Maxima”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, “Petrificus Totalus”, or “Episkey”';
     els.mic.addEventListener('click', function () {
       mic.wantOn = true;
       micStartRecognition();
@@ -498,7 +512,7 @@
           els.input.classList.remove('nope');
           void els.input.offsetWidth;             // restart animation
           els.input.classList.add('nope');
-          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, or “Petrificus Totalus”.';
+          els.hint.textContent = 'The words must be exact: “Expecto Patronum”, “Lumos”, “Nox”, “Wingardium Leviosa”, “Incendio”, “Accio”, “Depulso”, “Bombarda”, “Confringo”, “Avada Kedavra”, “Expelliarmus”, “Stupefy”, “Petrificus Totalus”, or “Episkey”.';
         } else {
           els.input.value = '';
         }
@@ -591,6 +605,14 @@
         spellPetrificus.addEventListener('click', castPetrificus);
         spellPetrificus.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castPetrificus(); }
+        });
+      }
+
+      var spellEpiskey = document.getElementById('spell-episkey');
+      if (spellEpiskey) {
+        spellEpiskey.addEventListener('click', castEpiskey);
+        spellEpiskey.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); castEpiskey(); }
         });
       }
 
