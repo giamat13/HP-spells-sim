@@ -5,7 +5,7 @@
         words. It is often wrong on invented Latin, and it only commits to a
         final answer about a second after you stop talking.
      2. Voiceprint (js/voiceprint.js) records the sound itself and decides on
-        its own when you stopped, about a fifth of a second after you do.
+        its own when you stopped, about 0.4 s after you do.
 
    Route 2 is what fires an utterance, so the page can react straight away
    with whatever words route 1 has so far; when the recognizer catches up, its
@@ -93,9 +93,9 @@
     function openMic() {
       if (!window.Voiceprint) return Promise.reject(new Error('no-voiceprint'));
       return Voiceprint.open({
-        onEnd: function (print) {
+        onEnd: function (print, samples, rate) {
           if (!print) return;                     // too short to judge
-          emitUtterance({ alts: pending || [], print: print, source: 'sound' });
+          emitUtterance({ alts: pending || [], print: print, source: 'sound', seconds: samples.length / rate });
         },
         onLevel: opts.onLevel
       });

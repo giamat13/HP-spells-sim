@@ -310,7 +310,7 @@
 
   // Union of several {spellId: [print, ...]} maps. Prints are opaque strings;
   // a spell keeps its most recent MAX_PRINTS so the file can't grow forever.
-  var MAX_PRINTS = 8;
+  var MAX_PRINTS = 16;
   function mergePrints() {
     var out = {};
     for (var a = 0; a < arguments.length; a++) {
