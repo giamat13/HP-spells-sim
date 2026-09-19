@@ -5,8 +5,8 @@
    verdicts are combined in voice.js.
 
    It also decides on its own when you stopped talking (a simple energy-based
-   endpoint), which is what makes it fast: a verdict lands about a fifth of a
-   second after you stop, instead of waiting for the recognizer's final result.
+   endpoint), which is what makes it fast: a verdict lands about 0.4 s after you stop, instead of
+   waiting for the recognizer's final result, which takes a second or more.
 
    A "print" is a small fingerprint of one spoken utterance: MFCC-style
    cepstral coefficients per frame, length-normalised to a fixed number of
@@ -324,9 +324,14 @@
   /* ---------- live microphone with its own end-of-speech detection ---------- */
 
   var START_MIN = 0.012, START_FACTOR = 3.5;
-  var END_SILENCE_MS = 220, MIN_SPEECH_MS = 180, MAX_SPEECH_MS = 2800, PREROLL_MS = 160;
+  // How long a silence ends an utterance. It has to outlast the pause inside a
+  // two-word spell ("Avada ... Kedavra", "Lumos ... Maxima"), which runs up to
+  // about 300 ms; at 220 ms those were cut into two halves that matched
+  // nothing. Lower = faster but splits more; higher = slower to cast.
+  var END_SILENCE_MS = 400, MIN_SPEECH_MS = 180, MAX_SPEECH_MS = 3200, PREROLL_MS = 160;
 
   // opts: { onStart(), onEnd(print, samples, rate), onLevel(rms, speaking) }
+  // (the utterance lasted samples.length / rate seconds)
   // Resolves with { close() }, or rejects if the microphone isn't available.
   function open(opts) {
     var Ctx = window.AudioContext || window.webkitAudioContext;

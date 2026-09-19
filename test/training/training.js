@@ -156,6 +156,7 @@
 
     var card = {
       print: u.print,
+      seconds: u.seconds,
       alts: alts,
       at: Date.now(),
       counted: false,
@@ -195,7 +196,7 @@
       if (!card.first) card.first = res;
 
       head.textContent = new Date(card.at).toLocaleTimeString() + ' · ' +
-        (card.print ? 'sound recorded' : 'words only') +
+        (card.print ? 'sound recorded' + (card.seconds ? ' (' + card.seconds.toFixed(1) + ' s)' : '') : 'words only') +
         (card.alts.length ? '' : ' · no words yet');
 
       verdictLine.textContent = '';
